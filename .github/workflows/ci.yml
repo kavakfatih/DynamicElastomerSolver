@@ -33,7 +33,7 @@ jobs:
         build_type: [Debug, Release]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fortran derleyicisini kur
         uses: fortran-lang/setup-fortran@v1
@@ -42,17 +42,36 @@ jobs:
           compiler: gcc
           version: 13
 
+      # Ninja ZORUNLUDUR, tercih degil: Windows'ta CMake varsayilan olarak
+      # Visual Studio ureticisini secer ve VS uretici Fortran'i hic
+      # desteklemez ("The Fortran compiler identification is unknown").
+      # Ayni uretici uc platformda da kullaniliyor ki matris tekdüze olsun.
+      - name: Ninja kur
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux)   sudo apt-get update -qq && sudo apt-get install -y ninja-build ;;
+            macOS)   brew list ninja >/dev/null 2>&1 || brew install ninja ;;
+            Windows) choco install ninja -y ;;
+          esac
+          ninja --version
+
       - name: Yapilandir
+        shell: bash
         run: >
-          cmake -B build
+          cmake -B build -G Ninja
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_Fortran_COMPILER="${{ steps.setup-fortran.outputs.fc }}"
 
+      # Ninja tek yapilandirmali (single-config) bir ureticidir; yapi turu
+      # CMAKE_BUILD_TYPE ile belirlenir, --config gerekmez.
       - name: Derle
-        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+        shell: bash
+        run: cmake --build build --parallel
 
       - name: Test
-        run: ctest --test-dir build --build-config ${{ matrix.build_type }} --output-on-failure
+        shell: bash
+        run: ctest --test-dir build --output-on-failure
 
   # =========================================================================
   # fpm ile derleme -- ikinci bir yapi sisteminin calistigini dogrular
@@ -62,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fortran derleyicisini kur
         uses: fortran-lang/setup-fortran@v1
@@ -95,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fortran derleyicisini kur
         uses: fortran-lang/setup-fortran@v1
@@ -117,6 +136,38 @@ jobs:
           echo "Uyari yok."
 
   # =========================================================================
+  # Kaynak denetimi
+  #
+  # Fortran YORUMLARINDA "/" ve "*" karakterleri yan yana bulunamaz.
+  #
+  # Sebep: Ninja ureticisi, modul bagimlilik grafigini cikarmak icin
+  # kaynaklari C on islemcisinden gecirir (gfortran -cpp -E). On islemci
+  # boyle bir diziyi C blok yorumu baslangici sanar ve
+  # "Error: unterminated comment" verir.
+  #
+  # Bu tuzak Makefile ureticisinde SESSIZCE calisir; yalnizca Ninja ile
+  # (yani Windows CI'da) ortaya cikar. Bu yuzden ayri bir denetim var:
+  # gelistirici yerelde Makefile kullaniyorsa hatayi goremez.
+  # =========================================================================
+  kaynak-denetimi:
+    name: Kaynak denetimi
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Yorumlarda C blok yorumu dizisi var mi
+        run: |
+          set +e
+          HITS=$(grep -rn -e '/\*' -e '\*/' src/ app/ test/ 2>/dev/null)
+          if [ -n "$HITS" ]; then
+            echo "$HITS"
+            echo "::error::Fortran kaynaginda C blok yorumu dizisi bulundu. Ninja ureticisi bunu 'unterminated comment' olarak reddeder."
+            exit 1
+          fi
+          echo "Temiz."
+
+  # =========================================================================
   # Lisans denetimi
   #
   # src/ altinda copyleft lisans metni ararsa basarisiz olur.
@@ -131,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: src/ altinda copyleft metni ara
         run: |
@@ -172,7 +223,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Her hata kodu her dilde var mi
         run: |

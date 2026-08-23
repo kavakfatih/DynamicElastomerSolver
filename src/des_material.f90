@@ -318,9 +318,16 @@ contains
    !> Durum değişkeni için varsayılan anahtar: SV1, SV2, ...
    !>
    !> Bu bir anahtardır, kullanıcıya gösterilecek metin DEĞİLDİR. Üst katman
-   !> bunu messages/*.toml üzerinden çevirir. Türetilmiş malzemeler anlamlı
-   !> anahtarlarla (DAMAGE, VISC_1 gibi) ezebilir; anahtarlar İngilizce ve
-   !> ASCII kalır.
+   !> bunu messages dizinindeki tr.toml / en.toml üzerinden çevirir.
+   !> Türetilmiş malzemeler anlamlı anahtarlarla (DAMAGE, VISC_1 gibi)
+   !> ezebilir; anahtarlar İngilizce ve ASCII kalır.
+   !>
+   !> NOT: Yorumlarda "/" ve "*" karakterleri yan yana YAZILMAZ. Ninja
+   !> üreticisi, modül bağımlılık grafiğini çıkarmak için Fortran
+   !> kaynaklarını C ön işlemcisinden geçirir; ön işlemci böyle bir diziyi
+   !> C blok yorumu başlangıcı sanır ve "unterminated comment" hatası verir.
+   !> Bu, yalnızca Ninja ile ortaya çıkar -- Makefile üreticisinde sessizce
+   !> çalışır, dolayısıyla Windows CI'da fark edilir.
    function default_sv_name(this, i) result(key)
       class(material_t), intent(in) :: this
       integer(ip), intent(in) :: i

@@ -108,6 +108,13 @@ ctest --test-dir build-rel
 - Tek harfli değişken adlarına dikkat: Fortran büyük/küçük harf duyarsızdır.
   Hacim oranı `J` ile döngü indisi `j` aynı isimdir; tensör döngülerinde
   `ii, jj, kk, ll` kullanılır.
+- **Yorumlarda `/` ve `*` karakterlerini yan yana yazmayın.** Ninja
+  üreticisi, modül bağımlılık grafiğini çıkarmak için kaynakları C ön
+  işlemcisinden geçirir; ön işlemci böyle bir diziyi C blok yorumu
+  başlangıcı sanar ve `Error: unterminated comment` verir. Bu tuzak
+  Makefile üreticisinde **sessizce çalışır** — yerelde `make` kullanıyorsanız
+  göremezsiniz, Windows CI'da patlar. `messages/tr.toml ve en.toml` yazın,
+  yıldızlı kısayolu değil. CI'da `kaynak-denetimi` işi bunu denetler.
 
 ---
 

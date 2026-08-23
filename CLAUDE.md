@@ -41,6 +41,17 @@ Ayrıntı: `CMakeLists.txt` içindeki UTF-8 notu.
 Türkçe karakterler yalnızca **yorumlarda** kullanılır. Tanımlayıcılar ve
 karakter sabitleri ASCII kalır.
 
+### Yorumlarda `/` ve `*` yan yana yazılmaz
+
+Ninja üreticisi, modül bağımlılık grafiğini çıkarmak için Fortran
+kaynaklarını C ön işlemcisinden geçirir. Ön işlemci `/` ve `*`
+karakterlerinin yan yana gelmesini C blok yorumu başlangıcı sanar ve
+`Error: unterminated comment` verir.
+
+Bu tuzak Makefile üreticisinde **sessizce çalışır**; yalnızca Ninja ile —
+yani Windows CI'da — ortaya çıkar. `messages/tr.toml ve en.toml` yazın,
+yıldızlı kısayolu değil. CI'daki `kaynak-denetimi` işi bunu denetler.
+
 ---
 
 ## Bozulmaz kurallar
