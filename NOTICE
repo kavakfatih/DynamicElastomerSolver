@@ -1,0 +1,29 @@
+DynamicElastomerSolver 2026 (DES/26)
+Copyright (c) 2026 Fatih Kavak
+
+Bu ürün Business Source License 1.1 altında lisanslanmıştır.
+Bağlayıcı lisans metni için LICENSE dosyasına bakınız.
+Resmi olmayan Türkçe çeviri: LISANS.tr.md
+
+Değişim Tarihi (Change Date): 2030-01-01
+Değişim Lisansı (Change License): Apache License, Version 2.0
+
+Bu tarihten itibaren, bu sürüm Apache License 2.0 şartları altında
+kullanılabilir hâle gelir. Değişim Tarihi her sürüm için ayrı ayrı işler.
+
+--------------------------------------------------------------------------
+
+Business Source License metninin telif hakkı (c) 2017 MariaDB Corporation Ab
+şirketine aittir. "Business Source License", MariaDB Corporation Ab'nin
+ticari markasıdır. Bu proje, lisans metninin kullanımına ilişkin MariaDB
+taahhütlerine uymaktadır.
+
+--------------------------------------------------------------------------
+
+ÜÇÜNCÜ TARAF BİLEŞENLER
+
+Bu sürüm (v0.0.1) hiçbir üçüncü taraf kütüphaneye bağımlı değildir.
+Yalnızca Fortran 2018 standart kütüphanesi kullanılmaktadır.
+
+Planlanan bağımlılıklar ve lisans politikası için THIRD_PARTY.md
+dosyasına bakınız.

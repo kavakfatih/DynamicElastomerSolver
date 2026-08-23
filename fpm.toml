@@ -1,0 +1,26 @@
+name = "des26"
+version = "0.0.1"
+license = "LicenseRef-BUSL-1.1"
+author = "Fatih Kavak"
+maintainer = "Fatih Kavak"
+copyright = "Copyright (c) 2026 Fatih Kavak"
+description = "DES/26 -- elastomer bilesenler icin 2B nonlineer sonlu elemanlar cozucusu"
+categories = ["numerical", "engineering"]
+
+# NOT: Bu dosya ASCII tutulmustur. fpm.toml'un genis arac zinciri tarafindan
+# okunan bir ustveri dosyasi olmasi ve bazi eski TOML ayristiricilarinin
+# UTF-8 ile sorun yasamasi nedeniyle Turkce karakter kullanilmamistir.
+# Kaynak kod yorumlari tam Turkcedir.
+
+[build]
+auto-executables = true
+auto-tests = true
+auto-examples = false
+
+[install]
+library = true
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"

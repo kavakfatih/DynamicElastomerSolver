@@ -1,0 +1,107 @@
+# DES/26 -- English message table
+#
+# The Fortran core PRODUCES NO TEXT. It returns integer status codes only.
+# This file maps those codes to human-readable text.
+# Decision and rationale: docs/adr/0008-cok-dillilik.md
+#
+# TWO FIELDS ARE MANDATORY FOR EVERY KEY:
+#   message    = what happened
+#   suggestion = what the user should do
+#
+# The second is mandatory. "Material evaluation failed" is not an error
+# message, it is an error announcement; if the user is left without a next
+# step, the message has not done its job.
+#
+# DECIMAL SEPARATOR: the decimal separator in this file and in every input
+# and output file is the DOT. A comma may appear only in on-screen display.
+# In an FEA model, confusing 1,5 with 1.5 makes the model silently wrong.
+#
+# Section names (keys) are identical to those in tr.toml.
+#
+# STATUS: this is a working skeleton. The English wording will be reviewed
+# in v0.6 together with the Qt interface.
+
+[meta]
+language = "en"
+language_name = "English"
+version = "0.0.1"
+
+# ===========================================================================
+# Material evaluation status codes
+# ===========================================================================
+
+[DES_MAT_OK]
+message = "Material evaluation succeeded"
+suggestion = "No action required."
+
+[DES_MAT_SINGULAR]
+message = "Strain tensor is singular (det C ~ 0)"
+suggestion = """
+The element has collapsed to nearly zero volume. Reduce the load increment \
+and refine the mesh in this region. If this appears on the very first \
+increment, check the boundary conditions: it usually comes from an \
+over-constrained region or coincident nodes.\
+"""
+
+[DES_MAT_NONPHYSICAL]
+message = "Element has inverted (J <= 0)"
+suggestion = """
+Reduce the load increment or refine the mesh in this region. The solver \
+will cut the step back automatically; if the warning keeps recurring, the \
+initial step size is too large for this problem.\
+"""
+
+[DES_MAT_NOTCONV]
+message = "Local material iteration did not converge"
+suggestion = """
+Reduce the time increment. For viscoelastic or damage materials this means \
+the step is large relative to the relaxation time: do not use a step \
+larger than one tenth of the shortest Prony time constant.\
+"""
+
+# ===========================================================================
+# Stability check status codes
+#
+# NOTE: the meaning of these codes is under review. The current criterion
+# is positive definiteness of the material tangent (Drucker), which is
+# lost as soon as J departs from unity in nearly incompressible materials.
+# Measurements and the open decision: docs/adr/0007-kararlilik-kriteri.md
+# ===========================================================================
+
+[DES_STAB_OK]
+message = "Material tangent is positive definite"
+suggestion = "No action required."
+
+[DES_STAB_UNSTABLE]
+message = "Material tangent is not positive definite"
+suggestion = """
+Check the material parameters: negative or inconsistent coefficients (a \
+negative C10, for instance) produce this result. If the parameters are \
+correct, this warning most likely stems from volume change and is NOT a \
+genuine material instability -- see docs/adr/0007-kararlilik-kriteri.md.\
+"""
+
+[DES_STAB_UNKNOWN]
+message = "Stability could not be determined"
+suggestion = """
+The tangent could not be evaluated, so no stability decision was possible. \
+Inspect the material evaluation status code first; the real problem is \
+there.\
+"""
+
+# ===========================================================================
+# General interface strings
+# ===========================================================================
+
+[genel]
+eleman = "element"
+nokta = "point"
+adim = "increment"
+yineleme = "iteration"
+uyari = "Warning"
+hata = "Error"
+bilgi = "Info"
+
+# Diagnostic location format. {eleman} and {nokta} come from the element
+# and point fields of mat_point_t.
+konum_bicimi = "element {eleman}, point {nokta}"

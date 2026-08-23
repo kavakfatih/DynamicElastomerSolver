@@ -1,0 +1,49 @@
+{
+  "//": "DES/26 calisma alani ayarlari. Kaynak yorumlari Turkce, UTF-8.",
+
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "files.associations": {
+    "*.f90": "FortranFreeForm",
+    "*.F90": "FortranFreeForm",
+    "CMakeLists.txt": "cmake"
+  },
+
+  "[FortranFreeForm]": {
+    "editor.tabSize": 3,
+    "editor.insertSpaces": true,
+    "editor.rulers": [90],
+    "editor.detectIndentation": false
+  },
+
+  "[markdown]": {
+    "editor.wordWrap": "bounded",
+    "editor.wordWrapColumn": 80,
+    "files.trimTrailingWhitespace": false
+  },
+
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.configureArgs": ["-DCMAKE_BUILD_TYPE=Debug"],
+  "cmake.configureOnOpen": true,
+
+  "fortran.linter.compiler": "gfortran",
+  "fortran.linter.includePaths": ["${workspaceFolder}/build/mod"],
+  "fortran.linter.extraArgs": [
+    "-std=f2018",
+    "-Wall",
+    "-Wextra",
+    "-fimplicit-none"
+  ],
+  "fortran.fortls.directories": ["${workspaceFolder}/src", "${workspaceFolder}/test", "${workspaceFolder}/app"],
+
+  "search.exclude": {
+    "**/build": true,
+    "**/build-*": true,
+    "**/*.mod": true
+  },
+
+  "cSpell.language": "en,tr"
+}

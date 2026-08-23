@@ -1,0 +1,36 @@
+# Metin dosyalarinda satir sonu normalizasyonu.
+# Depoda daima LF; is istasyonuna checkout sirasinda platforma birakilir.
+* text=auto eol=lf
+
+# Kaynak ve dokumanlar acikca metin.
+*.f90    text diff=fortran
+*.F90    text diff=fortran
+*.md     text
+*.toml   text
+*.txt    text
+*.json   text
+*.yml    text
+*.cmake  text
+CMakeLists.txt text
+LICENSE  text
+NOTICE   text
+
+# Windows toolchain betikleri CRLF ister.
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+
+# Ikili dosyalar -- fark alinmaz, satir sonu cevrilmez.
+*.png    binary
+*.jpg    binary
+*.pdf    binary
+*.vtu    binary
+*.vtk    binary
+*.h5     binary
+
+# GitHub dil istatistiklerinde dokumanlar ve testler one cikmasin.
+docs/**      linguist-documentation
+messages/**  linguist-documentation
+
+# Lisans metni GitHub tarafindan taninsin.
+LICENSE      linguist-license
+LISANS.tr.md linguist-documentation

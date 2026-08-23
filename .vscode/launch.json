@@ -1,0 +1,53 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Duman testi (des26)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/des26",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "Derle"
+    },
+    {
+      "name": "check_material_tangent (VER-002)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/check_material_tangent",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "Derle"
+    },
+    {
+      "name": "check_uniaxial (VER-001)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/check_uniaxial",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "Derle"
+    },
+    {
+      "name": "check_contract",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/check_contract",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "Derle"
+    }
+  ]
+}

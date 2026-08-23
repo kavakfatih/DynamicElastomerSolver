@@ -1,0 +1,32 @@
+# Yapi ciktilari
+# CMake  -> build/       (varsayilan)
+# fpm    -> build-fpm/   (--build-dir ile; ayni dizini paylasirlarsa
+#                         cikti agaclari ic ice girer)
+build/
+build-*/
+cmake-build-*/
+_build/
+
+# Fortran modul ve nesne dosyalari
+*.mod
+*.smod
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# fpm
+_deps/
+
+# Editor / IDE
+.DS_Store
+*.swp
+*~
+.idea/
+
+# Test ciktilari
+Testing/
+CTestTestfile.cmake

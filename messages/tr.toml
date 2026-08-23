@@ -1,0 +1,106 @@
+# DES/26 -- Türkçe mesaj tablosu
+#
+# Fortran çekirdeği METİN ÜRETMEZ. Yalnızca tamsayı hata kodu döndürür.
+# Bu dosya, o kodları kullanıcının okuyabileceği metne çevirir.
+# Karar ve gerekçe: docs/adr/0008-cok-dillilik.md
+#
+# HER ANAHTAR İÇİN İKİ ALAN ZORUNLUDUR:
+#   mesaj = ne oldu
+#   oneri = kullanıcı ne yapmalı
+#
+# İkincisi zorunludur. "Malzeme değerlendirmesi başarısız" bir hata
+# mesajı değil, bir hata bildirimidir; kullanıcının elinde bir sonraki
+# adım yoksa mesaj işe yaramamıştır.
+#
+# ONDALIK AYIRICI: Bu dosyadaki ve tüm girdi/çıktı dosyalarındaki
+# ondalık ayırıcı NOKTADIR. Virgül yalnızca ekranda gösterimde
+# kullanılabilir. Bir FEA modelinde 1,5 ile 1.5 karışırsa model
+# sessizce yanlış okunur.
+#
+# Bölüm adları (anahtarlar) İngilizce ve ASCII'dir; en.toml ile
+# birebir aynı olmalıdır.
+
+[meta]
+dil = "tr"
+dil_adi = "Türkçe"
+surum = "0.0.1"
+
+# ===========================================================================
+# Malzeme değerlendirme durum kodları
+# ===========================================================================
+
+[DES_MAT_OK]
+mesaj = "Malzeme değerlendirmesi başarılı"
+oneri = "İşlem gerekmiyor."
+
+[DES_MAT_SINGULAR]
+mesaj = "Şekil değiştirme tensörü tekil (det C ≈ 0)"
+oneri = """
+Eleman neredeyse sıfır hacme çökmüş. Yük adımını küçültün ve bu bölgede \
+ağı sıklaştırın. Sorun ilk adımda çıkıyorsa sınır koşullarını denetleyin: \
+çoğunlukla aşırı kısıtlanmış veya çakışık düğümlerden kaynaklanır.\
+"""
+
+[DES_MAT_NONPHYSICAL]
+mesaj = "Eleman ters dönmüş (J <= 0)"
+oneri = """
+Yük adımını küçültün veya bu bölgede ağı sıklaştırın. Çözücü adımı \
+kendiliğinden küçültecektir; uyarı tekrarlanıyorsa başlangıç adım boyu \
+bu problem için fazla büyük demektir.\
+"""
+
+[DES_MAT_NOTCONV]
+mesaj = "Malzeme içi yerel yineleme yakınsamadı"
+oneri = """
+Zaman adımını küçültün. Viskoelastik veya hasarlı malzemelerde bu, \
+gevşeme süresine göre adımın büyük kaldığı anlamına gelir: en küçük Prony \
+zaman sabitinin onda birinden büyük adım kullanmayın.\
+"""
+
+# ===========================================================================
+# Kararlılık kontrolü durum kodları
+#
+# NOT: Bu kodların anlamı gözden geçiriliyor. Mevcut kriter, malzeme
+# tanjantının pozitif tanımlılığıdır (Drucker) ve neredeyse
+# sıkıştırılamaz malzemelerde J birden uzaklaşır uzaklaşmaz kaybolur.
+# Ölçümler ve açık karar: docs/adr/0007-kararlilik-kriteri.md
+# ===========================================================================
+
+[DES_STAB_OK]
+mesaj = "Malzeme tanjantı pozitif tanımlı"
+oneri = "İşlem gerekmiyor."
+
+[DES_STAB_UNSTABLE]
+mesaj = "Malzeme tanjantı pozitif tanımlı değil"
+oneri = """
+Malzeme parametrelerini denetleyin: negatif veya tutarsız katsayılar \
+(örneğin negatif C10) bu sonucu verir. Parametreler doğruysa bu uyarı \
+büyük olasılıkla hacim değişiminden kaynaklanıyordur ve gerçek bir \
+malzeme kararsızlığı DEĞİLDİR -- ayrıntı için \
+docs/adr/0007-kararlilik-kriteri.md dosyasına bakın.\
+"""
+
+[DES_STAB_UNKNOWN]
+mesaj = "Kararlılık belirlenemedi"
+oneri = """
+Tanjant hesaplanamadığı için kararlılık hakkında karar verilemedi. \
+Önce malzeme değerlendirmesinin durum kodunu inceleyin; asıl sorun \
+oradadır.\
+"""
+
+# ===========================================================================
+# Genel arayüz metinleri
+# ===========================================================================
+
+[genel]
+eleman = "eleman"
+nokta = "nokta"
+adim = "adım"
+yineleme = "yineleme"
+uyari = "Uyarı"
+hata = "Hata"
+bilgi = "Bilgi"
+
+# Tanılama satırı biçimi. {eleman} ve {nokta}, mat_point_t içindeki
+# element ve point alanlarından gelir.
+konum_bicimi = "eleman {eleman}, nokta {nokta}"

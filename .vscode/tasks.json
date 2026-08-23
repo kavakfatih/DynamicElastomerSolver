@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Yapilandir (Debug)",
+      "type": "shell",
+      "command": "cmake -B build -DCMAKE_BUILD_TYPE=Debug",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Derle",
+      "type": "shell",
+      "command": "cmake --build build --parallel",
+      "problemMatcher": ["$gcc"],
+      "group": { "kind": "build", "isDefault": true },
+      "dependsOn": "Yapilandir (Debug)"
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "ctest --test-dir build --output-on-failure",
+      "problemMatcher": [],
+      "group": { "kind": "test", "isDefault": true },
+      "dependsOn": "Derle"
+    },
+    {
+      "label": "Temiz yeniden derle",
+      "type": "shell",
+      "command": "rm -rf build && cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel",
+      "problemMatcher": ["$gcc"],
+      "group": "build"
+    },
+    {
+      "label": "Release derle ve test et",
+      "type": "shell",
+      "command": "cmake -B build-rel -DCMAKE_BUILD_TYPE=Release && cmake --build build-rel --parallel && ctest --test-dir build-rel --output-on-failure",
+      "problemMatcher": ["$gcc"],
+      "group": "test"
+    },
+    {
+      "label": "Uyari denetimi (sifir uyari bekleniyor)",
+      "type": "shell",
+      "command": "rm -rf build-warn && cmake -B build-warn -DCMAKE_BUILD_TYPE=Debug > /dev/null && cmake --build build-warn --parallel 2>&1 | grep -i 'Warning:' && echo 'UYARI BULUNDU' || echo 'Uyari yok.'",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "//": "fpm de varsayilan olarak build/ kullanir; CMake ile cakismamasi icin ayri dizin.",
+      "label": "fpm test",
+      "type": "shell",
+      "command": "fpm test --build-dir build-fpm",
+      "problemMatcher": [],
+      "group": "test"
+    }
+  ]
+}

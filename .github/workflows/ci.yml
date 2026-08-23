@@ -1,0 +1,201 @@
+# DES/26 surekli tumlestirme
+#
+# NOT: Bu dosya ASCII tutulmustur. GitHub Actions komutlari ve is adlari
+# Ingilizce/ASCII kalir; kaynak kod yorumlari Turkcedir.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Ayni dal uzerinde yeni bir push gelirse eskisini iptal et.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # =========================================================================
+  # Derleme ve test -- uc platform x iki yapi turu
+  # =========================================================================
+  build-test:
+    name: ${{ matrix.os }} / ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+        build_type: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fortran derleyicisini kur
+        uses: fortran-lang/setup-fortran@v1
+        id: setup-fortran
+        with:
+          compiler: gcc
+          version: 13
+
+      - name: Yapilandir
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_Fortran_COMPILER="${{ steps.setup-fortran.outputs.fc }}"
+
+      - name: Derle
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Test
+        run: ctest --test-dir build --build-config ${{ matrix.build_type }} --output-on-failure
+
+  # =========================================================================
+  # fpm ile derleme -- ikinci bir yapi sisteminin calistigini dogrular
+  # =========================================================================
+  fpm:
+    name: fpm build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fortran derleyicisini kur
+        uses: fortran-lang/setup-fortran@v1
+        with:
+          compiler: gcc
+          version: 13
+
+      - name: fpm kur
+        uses: fortran-lang/setup-fpm@v5
+        with:
+          fpm-version: v0.10.1
+
+      # fpm de varsayilan olarak build/ kullanir. Bu iste CMake calismasa da
+      # aliskanligi bozmamak icin ayri dizin kullaniliyor.
+      - name: Derle
+        run: fpm build --build-dir build-fpm
+
+      - name: Test
+        run: fpm test --build-dir build-fpm
+
+  # =========================================================================
+  # Uyari denetimi
+  #
+  # Depo sifir derleyici uyarisi ile derlenir. Yeni bir uyari uretmek
+  # regresyondur; burada ayri bir is olarak denetlenir ki matris
+  # gunlukleri icinde kaybolmasin.
+  # =========================================================================
+  uyari-denetimi:
+    name: Derleyici uyarisi yok
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fortran derleyicisini kur
+        uses: fortran-lang/setup-fortran@v1
+        id: setup-fortran
+        with:
+          compiler: gcc
+          version: 13
+
+      - name: Derle ve uyari ara
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_Fortran_COMPILER="${{ steps.setup-fortran.outputs.fc }}"
+          cmake --build build --parallel 2>&1 | tee derleme.log
+
+          if grep -i "Warning:" derleme.log; then
+            echo "::error::Derleyici uyarisi bulundu. Depo sifir uyari ile derlenmelidir."
+            exit 1
+          fi
+          echo "Uyari yok."
+
+  # =========================================================================
+  # Lisans denetimi
+  #
+  # src/ altinda copyleft lisans metni ararsa basarisiz olur.
+  # Gerekce: docs/adr/0004-copyleft-bagimlilik-yok.md
+  #
+  # Bu denetim her seyi yakalamaz -- bir gelistiricinin ne okudugunu
+  # denetleyemez -- ama kopyala-yapistir bir GPL basligini yakalar ve
+  # en olasi kaza turu budur.
+  # =========================================================================
+  lisans-denetimi:
+    name: Lisans denetimi
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: src/ altinda copyleft metni ara
+        run: |
+          set +e
+          PATTERN='GNU General Public License|GNU Lesser General Public|GNU Affero|Server Side Public License|SPDX-License-Identifier:[[:space:]]*(GPL|AGPL|LGPL|SSPL)'
+          HITS=$(grep -rInE "$PATTERN" src/ app/ test/ 2>/dev/null)
+          if [ -n "$HITS" ]; then
+            echo "$HITS"
+            echo "::error::Kaynak agacinda copyleft lisans metni bulundu. Bkz. THIRD_PARTY.md"
+            exit 1
+          fi
+          echo "Copyleft lisans metni bulunmadi."
+
+      - name: LICENSE dosyasi degismemis mi
+        run: |
+          set +e
+          # BUSL taahhutlerinin 4. maddesi lisans metninin degistirilmesini
+          # yasaklar. Zorunlu iki cumlenin varligi denetlenir.
+          MISSING=0
+          grep -q "Business Source License 1.1" LICENSE || MISSING=1
+          grep -q "Not to modify this License in any other way" LICENSE || MISSING=1
+          grep -q "Change Date:" LICENSE || MISSING=1
+          if [ "$MISSING" -ne 0 ]; then
+            echo "::error::LICENSE dosyasi bozulmus veya eksik. BUSL metni degistirilemez."
+            exit 1
+          fi
+          echo "LICENSE dosyasi butun."
+
+  # =========================================================================
+  # Mesaj tablosu denetimi
+  #
+  # Cekirdekteki her DES_* durum kodunun her dil dosyasinda karsiligi
+  # olmali. Aksi halde kullanici ham anahtari gorur.
+  # Bkz. docs/adr/0008-cok-dillilik.md
+  # =========================================================================
+  mesaj-denetimi:
+    name: Mesaj tablosu butunlugu
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Her hata kodu her dilde var mi
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+
+          src = pathlib.Path("src/des_material.f90").read_text(encoding="utf-8")
+          kodlar = sorted(set(re.findall(
+              r"integer\(ip\), parameter :: (DES_(?:MAT|STAB)_\w+)", src)))
+          if not kodlar:
+              sys.exit("des_material.f90 icinde durum kodu bulunamadi")
+          print("Cekirdekteki kodlar:", ", ".join(kodlar))
+
+          hata = False
+          for dosya in ("messages/tr.toml", "messages/en.toml"):
+              metin = pathlib.Path(dosya).read_text(encoding="utf-8")
+              bolumler = set(re.findall(r"^\[(\w+)\]", metin, re.M))
+              eksik = [k for k in kodlar if k not in bolumler]
+              if eksik:
+                  hata = True
+                  print(f"::error::{dosya} icinde eksik anahtar: {', '.join(eksik)}")
+              else:
+                  print(f"{dosya}: tamam")
+
+          sys.exit(1 if hata else 0)
+          PY
