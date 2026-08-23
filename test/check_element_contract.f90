@@ -24,6 +24,7 @@ module mock_element_mod
    use des_element, only: element_t, element_config_t, element_ctx_t, &
                           element_quality_t, &
                           DES_ELEM_OK, DES_ELEM_BAD_ARG, &
+                          DES_ELEM_NOT_SETUP, &
                           DES_FORM_MIXED_UP, DES_P_CONDENSED
    implicit none
    private
@@ -74,16 +75,14 @@ contains
       stat = DES_ELEM_OK
 
       !> Sahte eleman malzemeyi kullanmıyor; sözleşme gereği imzada.
-      associate (unused_mat => material%name)
+      associate (unused_mat => material)
       end associate
    end subroutine mock_setup
 
    pure function mock_n_node(this) result(n)
       class(mock_element_t), intent(in) :: this
       integer(ip) :: n
-      n = 4_ip
-      associate (unused => this%id)
-      end associate
+      n = int(size(this%xy, 2), ip)
    end function mock_n_node
 
    !> Her Gauss noktasının state'ine NOKTAYA ÖZGÜ bir işaret yazar.
@@ -129,7 +128,7 @@ contains
       this%n_eval = this%n_eval + 1_ip
       stat = DES_ELEM_OK
 
-      associate (unused_t => ctx%time)
+      associate (unused_t => ctx)
       end associate
    end subroutine mock_residual
 
@@ -152,6 +151,11 @@ contains
       K_ug = 0.0_dp
       K_gg = 0.0_dp
 
+      if (.not. this%is_setup) then
+         stat = DES_ELEM_NOT_SETUP
+         return
+      end if
+
       do b = 1_ip, int(size(K_uu, 2), ip)
          do a = 1_ip, int(size(K_uu, 1), ip)
             K_uu(a, b) = real(a + b, dp)
@@ -162,8 +166,8 @@ contains
 
       stat = DES_ELEM_OK
 
-      associate (unused => u, unused2 => u_global, unused3 => ctx%dt, &
-                 unused4 => size(state_n))
+      associate (unused => u, unused2 => u_global, unused3 => ctx, &
+                 unused4 => state_n)
       end associate
    end subroutine mock_tangent
 
@@ -175,8 +179,9 @@ contains
       !> Sahte eleman gerçek distorsiyon hesaplamıyor; sözleşme
       !> "uygulanmadı" durumunu taşıyabilmeli.
       q%implemented = .false.
+      q%inverted = .not. this%is_setup
 
-      associate (unused => u, unused2 => this%id)
+      associate (unused => u)
       end associate
    end subroutine mock_quality
 

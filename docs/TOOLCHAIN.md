@@ -64,6 +64,19 @@ CI'da `fortls-denetimi` işi bunu her push'ta yapar.
 
 Geliştirmede kullanılan sürüm: gfortran 16.2 (Homebrew), macOS arm64.
 
+> **Sürüm farkı — CI otoritedir.** gfortran 13 ile 16, kullanılmayan
+> kukla argüman (`-Wunused-dummy-argument`) konusunda aynı davranmaz.
+> Özellikle tip-bağlı bir yordamda `this` yalnızca
+> `associate (x => this%bilesen)` içinde geçiyorsa, 16 bunu kullanım
+> sayar, **13 saymaz ve uyarı verir**. Yerel yapı temiz görünüp CI
+> kırmızıya dönebilir.
+>
+> Kural: kullanılmayan bir argümanı susturmak için `associate` kullanacaksanız
+> **tam değişkene** bağlayın (`associate (x => pt)`), bileşenine değil
+> (`associate (x => pt%time)`). Daha iyisi, argümanı gerçekten kullanın —
+> bir kurulum denetimi (`if (.not. this%is_setup) ...`) hem uyarıyı
+> giderir hem gerçek bir hata yakalar.
+
 ### Bayraklar
 
 Ortak: `-std=f2018 -Wall -Wextra -fimplicit-none`
