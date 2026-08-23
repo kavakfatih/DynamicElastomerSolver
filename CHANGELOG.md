@@ -34,6 +34,21 @@ Sürümlerde **tarih yoktur**. Bir sürüm, kapısındaki koşullar sağlandığ
 
 ### Eklendi
 
+- **Eleman sözleşmesi donduruldu** ([ADR 0009](docs/adr/0009-eleman-sozlesmesi.md)) —
+  `src/des_element.f90`. Düğüm başına değişken DOF, eleman-dışı global
+  DOF, çalışma zamanı formülasyon seçimi, `quality()`, `serialise` /
+  `restore`. Gerçek eleman uygulaması YOK; o v0.1'de.
+- `src/des_mesh.f90` — düğüm/eleman dizileri ve DOF haritası. Global
+  serbestlikler ANAHTAR üzerinden kaydedilir: aynı anahtarı isteyen her
+  eleman aynı indisi alır. Her elemana ayrı serbestlik verilseydi model
+  sessizce yanlış çözülürdü.
+- `src/des_sparse.f90` — CSR depolama (simetrik ve simetrik olmayan),
+  blok montajı, RCM sıralaması. Sembolik desen ile sayısal değerler
+  arayüzde AYRI: `analyse` bir kez, `zero` + `add` her Newton adımında.
+- `test/check_element_contract.f90` — sahte elemanla sekiz sözleşme
+  kontrolü, 65 iddia. Global DOF paylaşımı, Gauss noktası başına state,
+  düğüm sıcaklığı interpolasyonu, `recover_internal`, elle hesaplanmış
+  CSR montajı, RCM bant genişliği (3 → 1).
 - **VER-031** — mod bazlı kararlılık doğrulaması
   (`test/check_stability.f90`). Bağımsız referans tablosuna karşı en
   büyük sapma 4.3e-06. `lambda = 1`'deki eğim doğrudan E olduğu için

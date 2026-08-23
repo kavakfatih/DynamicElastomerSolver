@@ -108,7 +108,13 @@ subroutine eval(this, C, pt, state_n, S, CC, state_np1, stat, dt_factor)
 oldum" diyebilir ama "daha küçük adımla olurdu" diyemez — ki pratikte asıl
 vaka budur.
 
-### 2. Eleman arayüzü — TASARLANDI, henüz uygulanmadı (v0.1)
+### 2. Eleman arayüzü — DONDURULDU (v0.0.2)
+
+Uygulama: `src/des_element.f90` · Karar: [ADR 0009](adr/0009-eleman-sozlesmesi.md)
+Doğrulama: `test/check_element_contract.f90`
+
+Soyut sözleşme yazıldı; gerçek bir eleman (eksenel simetrik Q4) v0.1'de
+gelecek.
 
 Üç gereklilik:
 
@@ -167,6 +173,9 @@ tehlikelidir.
 | `des_tensor` | 5 | 3x3 tensör cebiri, Mandel indirgemesi, Cholesky |
 | `des_material` | 4 | Malzeme sözleşmesi, durum tipi, kararlılık taraması |
 | `des_mat_neohookean` | 4 | Sıkıştırılabilir Neo-Hookean malzemesi |
+| `des_mesh` | 4 | Düğüm/eleman dizileri, DOF haritası, global DOF paylaşımı |
+| `des_sparse` | 5 | CSR depolama, montaj, RCM sıralaması |
+| `des_element` | 4 | Eleman sözleşmesi (soyut) |
 
 `des_material` yalnızca `des_kinds` ve `des_tensor`a bağımlıdır. Hiçbir
 malzeme başka bir malzemeyi bilmez.

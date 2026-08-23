@@ -107,12 +107,60 @@ karşı örnekte baskın mekanizma budur — aynı $F$'de $K$ taraması:
 
 **2. İzokorik kısmın kendi konveks olmayışı.** Penaltı tamamen kaldırılsa
 bile ($K = 10^{-8}$, saf izokorik $F = \mathrm{diag}(\lambda,
-\lambda^{-1/2}, \lambda^{-1/2})$, $J = 1$), $\mathbb{C}_{1111}$ bileşeni
-$\lambda \approx 1.58$'den sonra negatife geçer:
+\lambda^{-1/2}, \lambda^{-1/2})$, $J = 1$) tanjant pozitif tanımlı
+değildir:
 
-| λ | 1.50 | 1.55 | **1.60** | 1.70 | 2.00 | 2.50 |
-|---|---|---|---|---|---|---|
-| min köşegen | +4.39e-02 | +1.65e-02 | **−4.88e-03** | −3.43e-02 | −6.67e-02 | −6.35e-02 |
+| λ | $\mathbb{C}_{1111}$ | min köşegen | **min özdeğer** |
+|---|---|---|---|
+| 1.00 | +1.600000e+00 | +1.600000e+00 | **+3.0e-08** |
+| 1.05 | +1.187773e+00 | +1.187773e+00 | **−1.157680e-02** |
+| 1.20 | +4.869685e-01 | +4.869685e-01 | **−1.197680e-01** |
+| 1.40 | +1.245513e-01 | +1.245513e-01 | **−2.149380e-01** |
+| 1.58 | +3.016304e-03 | +3.016304e-03 | **−2.312103e-01** |
+| 1.60 | −4.882811e-03 | −4.882811e-03 | **−2.308191e-01** |
+| 2.00 | −6.666667e-02 | −6.666667e-02 | **−1.922301e-01** |
+
+### İhlal 1.58'de BAŞLAMIYOR
+
+Bu tablonun okunma biçimi kritiktir. $\mathbb{C}_{1111}$ bileşeni
+$\lambda \approx 1.58$'de işaret değiştirir, ama **pozitif tanımlılık çok
+daha önce kaybolur**: en küçük özdeğer $\lambda = 1.05$'te zaten
+negatiftir.
+
+$\lambda = 1$'de en küçük özdeğer $3K = 3\times10^{-8}$'dir — yani penaltı
+sıfıra götürüldüğünde matris orada yalnızca pozitif **yarı** tanımlıdır
+(hacimsel mod sıfır özdeğerdir). $\lambda$ birimden ayrılır ayrılmaz o
+mod negatife döner.
+
+Doğru cümle şudur: **saf izokorik Neo-Hookean'da tanjant, pozitif
+tanımlılık anlamında pratikte hiçbir yerde ($\lambda > 1$) sağlanmaz.**
+1.58 yalnızca tek bir bileşenin işaret değiştirdiği yerdir; ölçütle ilgisi
+yoktur.
+
+### UYARI: bütün köşegenler pozitifken matris INDEFINITE olabilir
+
+Bu tablodan **"min köşegen > 0 ise kararlı"** diye bir ölçüt çıkarmak
+sessizce yanlıştır, ve burada tam o durum vardır.
+
+$\lambda = 1.40$'ta Mandel matrisinin **altı köşegeni de pozitiftir**:
+
+```
+  M(1,1) = +1.245513e-01      M(4,4) = +1.936327e+00
+  M(2,2) = +4.844373e+00      M(5,5) = +5.313280e+00
+  M(3,3) = +4.844373e+00      M(6,6) = +1.936327e+00
+```
+
+Yine de özdeğerler:
+
+```
+  -2.1494e-01   +1.9363e+00   +1.9363e+00
+  +4.7150e+00   +5.3133e+00   +5.3133e+00
+```
+
+En küçüğü **negatif**. Köşegen pozitifliği, pozitif tanımlılığın ne
+gerek ne de yeter şartıdır; bir matrisin köşegenine bakarak kararlılık
+kararı verilemez. (Bu tabloda $\mathbb{C}_{1111}$ ile min köşegen aynı
+sütun çıkıyor — bu bir tesadüftür, kural değildir.)
 
 Yani sorun yalnızca penaltı formülasyonunun bir yan etkisi değildir; ölçüt
 karışık u-p formülasyonuna (v0.3) geçildiğinde de yanlış kalırdı.

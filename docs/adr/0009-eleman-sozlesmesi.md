@@ -1,7 +1,15 @@
 # ADR 0009 — Eleman sözleşmesi
 
-**Durum:** ÖNERİLDİ — **onay bekliyor**
+**Durum:** KABUL EDİLDİ (üç düzeltmeyle)
 **Dondurulmuş sözleşme:** 2/4
+
+Uygulama: [`src/des_element.f90`](../../src/des_element.f90),
+[`src/des_mesh.f90`](../../src/des_mesh.f90),
+[`src/des_sparse.f90`](../../src/des_sparse.f90)
+Doğrulama: [`test/check_element_contract.f90`](../../test/check_element_contract.f90)
+
+> **Onay sırasında gelen düzeltme:** `ctx` sıcaklığı skaler değil **düğüm
+> bazlı** olacak. Gerekçe aşağıda, "Sketch'ten farklar" bölümünde.
 
 ---
 
@@ -73,9 +81,23 @@ hesaplatmak, şekil fonksiyonu bilgisini ikinci bir yere kopyalamak olurdu.
 
 ### e) `serialise` / `restore` — Sözleşme 4
 
-Eleman durumu = bütün integrasyon noktalarının malzeme durumları **artı**
-yoğunlaştırılmış iç serbestlikler. İkincisi unutulursa geri adım ve
-yeniden başlatma sessizce yanlış çalışır (aşağıya bakınız).
+**Sahiplik ayrımı.** Gauss noktası malzeme durumlarının sahibi ÇÖZÜCÜdür,
+eleman değil: `residual` ve `tangent` onları dışarıdan dizi olarak alır.
+Sebep, yeniden ağ örmedir — remesher bütün modelin durum alanını tek
+seferde taşımak zorundadır ve durumlar eleman nesnelerinin içine
+dağılmışsa bu iş elemanları tek tek yoklamaya döner.
+
+Dolayısıyla Sözleşme 4 iki parçadan oluşur:
+
+| Ne | Sahibi | Nasıl aktarılır |
+|---|---|---|
+| Gauss noktası malzeme durumları | Çözücü | `material_state_t%serialise` (ADR 0006) |
+| Yoğunlaştırılmış iç serbestlikler | **Eleman** | `element_t%serialise` |
+
+`element_t%serialise` yalnızca elemanın KENDİ sahip olduğu durumu, yani
+iç serbestlikleri taşır. Bu unutulursa geri adım ve yeniden başlatma
+sessizce yanlış çalışır: Gauss durumları geri yüklenir ama basınç
+yüklenmez, tekrarlanan artım farklı bir noktadan başlar.
 
 ---
 
@@ -114,12 +136,17 @@ end type
 
 !> Eleman bağlamı -- mat_point_t ile AYNI GEREKÇE (ADR 0006): ileride
 !> alan eklemek hiçbir elemanı kırmasın diye bir dolaylama katmanı.
-!> Isıl-mekanik kuplaj (v0.4) düğüm sıcaklığı alanını buraya ekleyecek.
 type :: element_ctx_t
-   real(dp) :: time        = 0.0_dp
-   real(dp) :: dt          = 0.0_dp
-   real(dp) :: temperature = 293.15_dp
+   real(dp) :: time = 0.0_dp
+   real(dp) :: dt   = 0.0_dp
+   !> DÜĞÜM sıcaklıkları (n_node). Eleman bunları radius gibi Gauss
+   !> noktalarına interpole eder ve pt%temperature'a yazar.
+   !> Ayrılmamışsa veya boşsa referans sıcaklığa düşülür.
+   real(dp), allocatable :: node_temperature(:)
 end type
+
+!> İzotermal analizde çağıranın hiçbir şey vermesi gerekmez.
+real(dp), parameter :: DES_T_REF = 293.15_dp
 
 !> Distorsiyon metrikleri. `worst` 0..1 arasında, 1 = mükemmel;
 !> remesher eşiği bunun üzerinden kurulur.
@@ -200,8 +227,25 @@ Eksenel simetride `pt%radius` her Gauss noktasında farklıdır ve onu
 yalnızca eleman hesaplayabilir (şekil fonksiyonlarıyla). `pt%element` ve
 `pt%point` de öyle. Dışarıdan `pt` almak, çağıranı elemanın iç
 integrasyon düzenini bilmeye zorlardı. Bunun yerine eleman düzeyi bir
-`ctx` alınır (zaman, artım, sıcaklık) ve eleman her Gauss noktası için
-`pt`yi kendisi doldurur.
+`ctx` alınır ve eleman her Gauss noktası için `pt`yi kendisi doldurur.
+
+**Sıcaklık `ctx`te DÜĞÜM BAZLIDIR, skaler değil.** Sebep `radius` ile
+birebir aynıdır: sıcaklık da eleman içinde değişir ve düğüm
+sıcaklıklarından Gauss noktalarına interpole edilir. Tek bir skaler
+taşınsaydı, ısıl-mekanik kuplaj geldiğinde (v0.3–v0.4) **her eleman
+imzası kırılırdı** — ki bu, ADR 0006'da `mat_point_t` ile kapattığımız
+hatanın tam olarak bir seviye yukarıda tekrarı olurdu.
+
+Şimdi eklemek bir alan; sonra eklemek her imzayı kırmak.
+
+| Alan | Biçim | Neden |
+|---|---|---|
+| `ctx%time`, `ctx%dt` | skaler | eleman içinde değişmez |
+| `ctx%node_temperature(:)` | düğüm dizisi | eleman içinde değişir, interpole edilir |
+
+Varsayılan davranış: `node_temperature` ayrılmamışsa veya boşsa
+`pt%temperature` referans sıcaklığa (`DES_T_REF = 293.15 K`) düşer.
+İzotermal analizde çağıranın hiçbir şey vermesi gerekmez.
 
 **3. `condense_pressure()` yerine `recover_internal()`.** Statik
 yoğunlaştırma tek yönlü bir işlem değildir: küresel çözümden sonra iç
@@ -236,10 +280,10 @@ ve eyer noktası (saddle point) yapısı hafifler — indefinite blok eleman
 içinde kalır, küresel matrise taşınmaz.
 
 Maliyeti: iç serbestlikler eleman durumunun parçası olur ve
-`serialise`/`restore` ile taşınmak **zorundadır**. Geri adımda (cut-back)
-yalnızca Gauss durumları geri yüklenir de basınç yüklenmezse, tekrarlanan
-artım farklı bir noktadan başlar. Sözleşmede `n_internal_dof()` bu yüzden
-var.
+`element_t%serialise` ile taşınmak **zorundadır** (yukarıda (e)'deki
+sahiplik tablosu). Geri adımda (cut-back) yalnızca Gauss durumları geri
+yüklenir de basınç yüklenmezse, tekrarlanan artım farklı bir noktadan
+başlar. Sözleşmede `n_internal_dof()` bu yüzden var.
 
 Düğüm-basıncı seçeneği neden korunuyor: LBB (inf-sup) çalışmalarında ve
 Marc sonuçlarıyla karşılaştırmada gerekebilir; ayrıca bazı eleman

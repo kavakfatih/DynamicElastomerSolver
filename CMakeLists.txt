@@ -78,7 +78,10 @@ add_library(des_core STATIC
     src/des_kinds.f90
     src/des_tensor.f90
     src/des_material.f90
-    src/des_mat_neohookean.f90)
+    src/des_mat_neohookean.f90
+    src/des_mesh.f90
+    src/des_sparse.f90
+    src/des_element.f90)
 
 target_link_libraries(des_core PUBLIC des_flags)
 target_include_directories(des_core PUBLIC "${CMAKE_Fortran_MODULE_DIRECTORY}")
@@ -106,3 +109,4 @@ des_add_test(check_material_tangent)
 des_add_test(check_uniaxial)
 des_add_test(check_stability)
 des_add_test(check_contract)
+des_add_test(check_element_contract)
