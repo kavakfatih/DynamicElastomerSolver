@@ -104,4 +104,5 @@ endfunction()
 
 des_add_test(check_material_tangent)
 des_add_test(check_uniaxial)
+des_add_test(check_stability)
 des_add_test(check_contract)

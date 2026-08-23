@@ -11,8 +11,53 @@ Sürümlerde **tarih yoktur**. Bir sürüm, kapısındaki koşullar sağlandığ
 
 ## [Yayımlanmadı]
 
+### Değişti
+
+- **Kararlılık ölçütü değişti** ([ADR 0007](docs/adr/0007-kararlilik-kriteri.md)).
+  Tam tanjant pozitif tanımlılığı (Drucker) kaldırıldı; yerine üç
+  deformasyon modunda nominal gerilmenin monotonluğu (`dP/dlambda > 0`)
+  kondu. Sebep: sağlıklı bir Neo-Hookean (C10 = +0.6, K = 1e3) eski
+  ölçütü sağlamıyor — `F = diag(1.40, 0.85, 0.85)` altında
+  `dC:CC:dC = -3.9389e+01`. Serbest enerji C uzayında konveks değil,
+  polikonveks. Penaltı tamamen kaldırıldığında bile izokorik kısım
+  `lambda ~ 1.58`'den sonra ihlal ediyor.
+- `check_stability` imzası: tek bir C yerine uzama aralığı ve mod listesi
+  alıyor, ilk kararsızlığın (mod, lambda) çiftini döndürüyor. Kalibrasyon
+  modülünün (v0.4) kullanacağı arayüz budur. **`eval` imzasına
+  dokunulmadı.**
+- `material_t`'ye `mu_ref` ve `kappa_ref` eklendi (normalizasyon ve
+  hacimsel kararlılık raporu).
+- README ve `docs/KAPSAM.md`: burulmanın pazar liderlerinde bulunmadığı
+  yönündeki gerçek dışı iddia kaldırıldı. ANSYS PLANE182/183
+  `KEYOPT(3)=6` ve Abaqus CGAX bunu yapıyor. Gerçek boşluk
+  **burulma + yeniden ağ örme + hoop sürtünmesinin birlikte** olmaması.
+
+### Eklendi
+
+- **VER-031** — mod bazlı kararlılık doğrulaması
+  (`test/check_stability.f90`). Bağımsız referans tablosuna karşı en
+  büyük sapma 4.3e-06. `lambda = 1`'deki eğim doğrudan E olduğu için
+  VER-001 ile çapraz doğrulanıyor (bağıl fark 3.16e-08).
+- `AGENTS.md` — çok ajanlı çalışma için bağlayıcı kural seti (açık
+  standart). `CLAUDE.md` buna symlink.
+- `docs/TOOLCHAIN.md` — araç zinciri, sıfır uyarı kuralının kapsamı,
+  üretici seçimi, Windows notları.
+- `.github/CODEOWNERS`, issue şablonları, PR şablonu,
+  `.github/workflows/release.yml`.
+- CI'ya `fortls-denetimi` işi: sıfır uyarı kuralı artık derleyiciyi **ve**
+  fortls'i kapsıyor.
+
+### Düzeltildi
+
+- İki host değişkeni maskelemesi (`diag3`'ün `c` argümanı host'taki
+  `C(3,3)` tensörünü, `slope_of`'un `lam` argümanı host'taki `LAM(7)`
+  dizisini maskeliyordu). gfortran bunları yakalamıyor, fortls yakalıyor.
+- Visual Studio proje dosyaları `.gitignore`'a eklendi; elle tutulan bir
+  `.sln` olmayacak (`docs/TOOLCHAIN.md`).
+
 Sıradaki: v0.1 — eksenel simetrik Q4 elemanı, F-bar, Newton çözücüsü,
 yama testi (patch test), kalın cidarlı silindir doğrulaması.
+[ADR 0009](docs/adr/0009-eleman-sozlesmesi.md) onay bekliyor.
 
 ---
 

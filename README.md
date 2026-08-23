@@ -18,17 +18,42 @@ kauçuğu, decoupler, burç (bushing), motor takozu, şanzıman takozu, kaplin.
 
 ## Neden bir tane daha FEA çözücüsü
 
-Ticari genel amaçlı çözücüler elastomer işini yapar, ama üç yerde pahalıya
-mal olur:
+**Konumlanma:** DES/26'nın tanımlayıcı yeteneği "eksenel simetrik +
+burulma" **değildir** — o özellik pazar liderlerinde zaten vardır.
+Tanımlayıcı yetenek şudur:
 
-- **Burulma.** Eksenel simetrik + burulma (u_theta) formülasyonu, burulmalı
-  titreşim damperi tasarımının tam merkezinde olmasına rağmen genel amaçlı
-  paketlerde ya yoktur ya da 3B'ye zorlar. DES/26 bunu v0.2'de birinci sınıf
-  bir yetenek olarak verir.
-- **Yeniden ağ örme (remesh).** Büyük şekil değiştirmede ağ bozulur.
-  Otomatik yeniden ağ örme ve çözüm aktarımı v0.5'te.
-- **Lisans maliyeti.** Bir damper geometrisini yüz kez taramak, çözüm başına
-  lisans ödeyerek yapılabilecek bir şey değildir.
+> **Burulma, otomatik yeniden ağ örme ve hoop yönünde sürtünme — birlikte.**
+
+Bu üçünün aynı analizde çalışması, burç ve burulmalı titreşim damperi
+(TVD) parçalarında gereklidir: büyük burulmalı kayma ağı bozar, hoop yönü
+de yük yönüdür. Pazar lideri burulmayı destekler, yeniden ağ örmeyi ayrıca
+destekler, ama ikisini birlikte desteklemez.
+
+Burulmanın kendisi bir boşluk değildir — ANSYS'te PLANE182 ve PLANE183,
+`KEYOPT(3)=6` ile burulmalı eksenel simetrik analizi yapar; Abaqus'te CGAX
+eleman ailesi vardır. Gerçek boşluk, bu seçeneğin taşıdığı kısıtlardadır.
+ANSYS'in kendi dokümantasyonuna göre burulmalı eksenel simetrik seçenek
+için:
+
+- yeniden bölgeleme (rezoning) ve nonlineer adaptivite **desteklenmiyor**
+- yalnızca tam integrasyon mevcut (karışık u-P ile kullanılabiliyor)
+- temas elemanlarıyla kullanıldığında **hoop yönündeki sürtünme hesaba
+  katılmıyor**
+
+Bunun yanında iki pratik gerekçe daha var:
+
+- **Yeniden ağ örme.** Büyük şekil değiştirmede ağ bozulur; otomatik
+  yeniden ağ örme ve çözüm aktarımı v0.5'te birinci sınıf bir yetenek
+  olarak gelir.
+- **Lisans maliyeti.** Bir damper geometrisini yüz kez taramak, çözüm
+  başına lisans ödeyerek yapılabilecek bir şey değildir.
+
+> **Rekabet iddiaları hakkında uyarı.** Yukarıdaki rakip kısıtları,
+> alıntılandıkları sürümlerin dokümantasyonunda belgelenmiştir. Kamuya
+> açık herhangi bir rekabet iddiası **yayınlanmadan önce güncel sürüme
+> karşı yeniden doğrulanmalıdır**; bu kısıtlar sürümden sürüme değişir.
+> Ayrıca ilgili lisans sözleşmesi karşılaştırmalı başarım (benchmark)
+> yayınını yasaklıyorsa, karşılaştırma yayınlanmamalıdır.
 
 Kapsam bilinçli olarak dardır. 3B, metal plastisitesi, açık dinamik ve CFD
 **kalıcı olarak** kapsam dışıdır — bkz. [docs/KAPSAM.md](docs/KAPSAM.md).
@@ -98,6 +123,7 @@ Bu sürümde geçen doğrulamalar:
 |---|---|---|---|
 | VER-001 | Tek eksenli gerilme, Neo-Hookean | Analitik tam çözüm | bağıl hata 4.8e-06 … 5.9e-05 |
 | VER-002 | Tutarlı tanjant (consistent tangent) | Sonlu fark | bağıl hata ≤ 1.1e-10 |
+| VER-031 | Mod bazlı kararlılık, dP/dλ | Bağımsız referans tablosu | mutlak fark ≤ 4.3e-06 |
 
 VER-001'de küçük şekil değiştirme elastisite modülü **3.599986** ölçülür;
 sıkıştırılamaz sınırdaki kesin değer 6·C10 = 3.600000, sonlu K = 1e5 için
@@ -121,9 +147,9 @@ içindedir.
 
 - [0006 — Malzeme sözleşmesi](docs/adr/0006-malzeme-sozlesmesi.md): neden
   malzeme her zaman tam 3x3 alır ve analiz tipini asla bilmez
-- [0007 — Kararlılık kriteri](docs/adr/0007-kararlilik-kriteri.md): Drucker
-  kararlılığının neredeyse sıkıştırılamaz malzemelerde neden yanıltıcı
-  olduğu — **açık karar bekliyor**
+- [0007 — Kararlılık ölçütü](docs/adr/0007-kararlilik-kriteri.md): tanjant
+  pozitif tanımlılığının neden yanlış ölçüt olduğu ve yerine gelen mod
+  bazlı monotonluk kontrolü
 - [0008 — Çok dillilik](docs/adr/0008-cok-dillilik.md): ondalık ayırıcının
   neden her zaman nokta olduğu
 
@@ -148,6 +174,13 @@ ve ADR kaydıyla, GPL/AGPL/SSPL yasak — **kaynak kodu okumak dahil**.
 
 ## Katkı
 
-[CONTRIBUTING.md](CONTRIBUTING.md) ve [CLAUDE.md](CLAUDE.md) dosyalarını
+[CONTRIBUTING.md](CONTRIBUTING.md) ve [AGENTS.md](AGENTS.md) dosyalarını
 okuyunuz. En kısa özet: tolerans gevşetmeyin, `ctest` çalıştırmadan
 "çalışıyor" demeyin, tasarımda yanlış gördüğünüzü söyleyin.
+
+`AGENTS.md` hem insan katkıcılar hem yapay zekâ ajanları için bağlayıcı
+kural setidir ([açık standart](https://agents.md/); 30'dan fazla araç
+doğal olarak okur). `CLAUDE.md` ona bağlı bir symlink'tir.
+
+Araç zinciri, derleyici bayrakları ve sıfır uyarı kuralı:
+[docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).

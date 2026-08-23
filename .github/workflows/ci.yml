@@ -136,6 +136,59 @@ jobs:
           echo "Uyari yok."
 
   # =========================================================================
+  # fortls denetimi
+  #
+  # Sifir uyari kurali derleyiciyi VE fortls'i kapsar.
+  #
+  # gfortran'in yakalamadigi gercek bir hata sinifini fortls yakalar:
+  # HOST DEGISKENI MASKELEME. `contains` altindaki bir ic prosedur, host
+  # ile ayni isimde bir degisken tanimlarsa host'unkini maskeler. Yasal
+  # ama tehlikeli: host degiskenini degistirdiginizi sanirken yerel bir
+  # kopyayi degistirirsiniz. Cokme uretmez, sayiyi biraz yanlis yapar --
+  # bu projede en pahali hata sinifi budur.
+  #
+  # Bkz. docs/TOOLCHAIN.md
+  # =========================================================================
+  fortls-denetimi:
+    name: fortls uyarisi yok
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: fortls kur
+        run: pip install fortls
+
+      # DIKKAT -- desen buyuk/kucuk harfe DUYARLI ve satir numarasi
+      # onekini arar. fortls temiz bir dosya icin "No errors or warnings"
+      # yazar; case-insensitive bir "warning" aramasi bu satirla eslesir
+      # ve denetim HER ZAMAN kirmiziya doner. Gercek tani satirlari
+      # "  151:WARNING  ..." bicimindedir.
+      - name: Tani calistir
+        run: |
+          set +e
+          FAIL=0
+          for f in src/*.f90 test/*.f90 app/*.f90; do
+            OUT=$(fortls --debug_rootpath . --debug_filepath "$f" \
+                    --debug_diagnostics 2>&1 \
+                  | grep -E "^[[:space:]]*[0-9]+:(WARNING|ERROR)")
+            if [ -n "$OUT" ]; then
+              echo "### $f"
+              echo "$OUT"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::fortls uyarisi bulundu. Sifir uyari kurali derleyiciyi VE fortls'i kapsar."
+            exit 1
+          fi
+          echo "fortls uyarisi yok."
+
+  # =========================================================================
   # Kaynak denetimi
   #
   # Fortran YORUMLARINDA "/" ve "*" karakterleri yan yana bulunamaz.

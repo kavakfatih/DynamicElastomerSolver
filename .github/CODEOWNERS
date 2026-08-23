@@ -1,0 +1,13 @@
+# DES/26 kod sahipleri
+#
+# src/ altina dokunan her PR sahibin onayini ister. Cok ajanli calismada
+# AGENTS.md'deki sahiplik sinirini YAPISAL olarak zorunlu kilar: bir
+# kural dosyasina uymak gonullulukdur, CODEOWNERS uymamayi engeller.
+#
+# NOT: Bu dosyanin etkili olmasi icin main dalinda branch protection
+# acik ve "Require review from Code Owners" isaretli olmalidir.
+
+/src/           @kavakfatih
+/docs/adr/      @kavakfatih
+/LICENSE        @kavakfatih
+/AGENTS.md      @kavakfatih

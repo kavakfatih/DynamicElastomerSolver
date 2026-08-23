@@ -58,34 +58,35 @@ zaman sabitinin onda birinden büyük adım kullanmayın.\
 """
 
 # ===========================================================================
-# Kararlılık kontrolü durum kodları
+# Kararlılık taraması durum kodları
 #
-# NOT: Bu kodların anlamı gözden geçiriliyor. Mevcut kriter, malzeme
-# tanjantının pozitif tanımlılığıdır (Drucker) ve neredeyse
-# sıkıştırılamaz malzemelerde J birden uzaklaşır uzaklaşmaz kaybolur.
-# Ölçümler ve açık karar: docs/adr/0007-kararlilik-kriteri.md
+# Ölçüt: tek eksenli, eşit iki eksenli ve düzlemsel modlarda nominal
+# gerilmenin uzamaya göre türevi pozitif olmalı (dP/dlambda > 0).
+# Tam tanjant pozitif tanımlılığı DEĞİL: sağlıklı bir Neo-Hookean onu
+# sağlamaz. Gerekçe: docs/adr/0007-kararlilik-kriteri.md
 # ===========================================================================
 
 [DES_STAB_OK]
-mesaj = "Malzeme tanjantı pozitif tanımlı"
+mesaj = "Malzeme taranan bütün modlarda kararlı"
 oneri = "İşlem gerekmiyor."
 
 [DES_STAB_UNSTABLE]
-mesaj = "Malzeme tanjantı pozitif tanımlı değil"
+mesaj = "Nominal gerilme uzamayla azalıyor (dP/dlambda <= 0)"
 oneri = """
-Malzeme parametrelerini denetleyin: negatif veya tutarsız katsayılar \
-(örneğin negatif C10) bu sonucu verir. Parametreler doğruysa bu uyarı \
-büyük olasılıkla hacim değişiminden kaynaklanıyordur ve gerçek bir \
-malzeme kararsızlığı DEĞİLDİR -- ayrıntı için \
-docs/adr/0007-kararlilik-kriteri.md dosyasına bakın.\
+Malzeme, bildirilen modda ve uzama oranında kararsız: daha fazla \
+uzattıkça daha az kuvvet taşıyor. Bu, kalibrasyonun deney verisinin \
+kapsadığı aralığın dışına taşmış olmasının tipik belirtisidir. \
+Katsayıları yeniden oturtun veya analiz aralığını malzemenin kararlı \
+kaldığı uzamalarla sınırlayın. Negatif C10 gibi tutarsız bir katsayı \
+da bu sonucu verir.\
 """
 
 [DES_STAB_UNKNOWN]
 mesaj = "Kararlılık belirlenemedi"
 oneri = """
-Tanjant hesaplanamadığı için kararlılık hakkında karar verilemedi. \
-Önce malzeme değerlendirmesinin durum kodunu inceleyin; asıl sorun \
-oradadır.\
+Yanal uzama çözülemediği veya malzeme değerlendirmesi başarısız olduğu \
+için karar verilemedi. Önce malzeme değerlendirmesinin durum kodunu \
+inceleyin; asıl sorun oradadır.\
 """
 
 # ===========================================================================

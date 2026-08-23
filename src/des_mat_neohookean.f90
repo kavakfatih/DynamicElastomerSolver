@@ -76,6 +76,12 @@ contains
       m%n_sv = 0_ip
       m%c10 = c10
       m%kappa = kappa
+
+      !> Küçük şekil değiştirme referans modülleri. Kararlılık eğimlerini
+      !> boyutsuzlaştırmak ve hacimsel kararlılığı raporlamak için temel
+      !> sınıf tarafından okunur; gerilme hesabında kullanılmaz.
+      m%mu_ref = 2.0_dp*c10
+      m%kappa_ref = kappa
    end function new_neohookean
 
    !> Gerilme ve tanjant değerlendirmesi. Sözleşme için des_material'a bakınız.

@@ -148,14 +148,17 @@ contains
       nameout(6) = 'hacimsel       '
    end subroutine build_cases
 
-   pure function diag3(a, b, c) result(D)
-      real(dp), intent(in) :: a, b, c
+   !> Kösegen deformasyon gradyani. Kukla argüman adlari bilinçli olarak
+   !> d11/d22/d33: tek harfli `c`, host kapsamindaki C(3,3) tensörünü
+   !> maskelerdi (bkz. AGENTS.md, host maskeleme kurali).
+   pure function diag3(d11, d22, d33) result(D)
+      real(dp), intent(in) :: d11, d22, d33
       real(dp) :: D(3, 3)
 
       D = 0.0_dp
-      D(1, 1) = a
-      D(2, 2) = b
-      D(3, 3) = c
+      D(1, 1) = d11
+      D(2, 2) = d22
+      D(3, 3) = d33
    end function diag3
 
    !> S'nin simetrik yönlerde merkezi farkıyla sayısal tanjant.

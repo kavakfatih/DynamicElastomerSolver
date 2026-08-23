@@ -32,6 +32,14 @@ Her problem için üç şey zorunludur:
 
 > **"Geçiyor" bir tolerans gerekçesi değildir.**
 
+### Numaralandırma politikası
+
+**VER numaraları asla yeniden kullanılmaz ve asla kaydırılmaz.** Yeni bir
+doğrulama problemi, konusu hangi gruba girerse girsin, listenin sonuna
+eklenir. Sebep: numaralar teori notlarından, ADR'lerden, commit
+mesajlarından ve CI günlüklerinden referans alınır; kaydırma bu
+referansların hepsini sessizce yanlışlar.
+
 Bir toleransın gerekçesi şunlardan biri olmalıdır:
 
 - **Yuvarlama tabanı** — çift hassasiyette ulaşılabilecek en iyi değer
@@ -51,9 +59,9 @@ bulunur; tolerans gerçekten yanlışsa, gerekçesi bu belgede güncellenir.
 
 | Durum | Sayı |
 |---|---|
-| **GEÇTİ** | 2 |
+| **GEÇTİ** | 3 |
 | Planlandı | 28 |
-| **Toplam** | 30 |
+| **Toplam** | 31 |
 
 ---
 
@@ -334,11 +342,60 @@ referansla 2e-2. **Gerekçe:** *Mühendislik kabulü.* **Sürüm:** v0.5
 
 ---
 
+## E — Malzeme kararlılığı (VER-031)
+
+### VER-031 — Mod bazlı kararlılık ölçütü · **GEÇTİ**
+
+**Referans:** Bağımsız olarak hesaplanmış nominal gerilme ve
+`dP/dlambda` tablosu (C10 = 0.6, K = 1e5, tek eksenli), yedi uzama
+oranında; artı C10 = -0.6 için üç nokta.
+
+**Tolerans:** 2.0e-5 mutlak.
+
+**Gerekçe:** *Referansın gösterim hassasiyeti.* Referans değerler beş
+ondalık haneye yuvarlanmış verilmiştir; tek başına bu ±5e-6 belirsizlik
+taşır. Tolerans bunun dört katıdır. Ölçülen sapmalar 4.3e-06
+mertebesindedir, yani referansın kendi yuvarlama payı içinde kalır.
+
+**Ölçülen** (C10 = +0.6):
+
+| λ | P (ref) | P (ölçülen) | dP/dλ (ref) | dP/dλ (ölçülen) |
+|---|---|---|---|---|
+| 0.50 | −4.19999 | −4.199986 | 20.39992 | 20.399923 |
+| 0.70 | −1.60897 | −1.608974 | 8.19706 | 8.197060 |
+| 1.00 | 0.00000 | 0.000000 | 3.59999 | 3.599986 |
+| 1.50 | +1.26666 | 1.266658 | 1.91109 | 1.911089 |
+| 2.00 | +2.09998 | 2.099976 | 1.49996 | 1.499961 |
+| 3.00 | +3.46658 | 3.466582 | 1.28880 | 1.288802 |
+| 4.00 | +4.72480 | 4.724797 | 1.23735 | 1.237346 |
+
+C10 = −0.6: −3.600014 / −1.911134 / −1.500039 (referans −3.60001 /
+−1.91113 / −1.50004). Her iki malzeme de doğru sınıflandırılır.
+
+**Ek kontrol — VER-001 ile çapraz doğrulama.** λ = 1'deki dP/dλ doğrudan
+elastisite modülüdür:
+
+| Ne | Tolerans | Ölçülen |
+|---|---|---|
+| dP/dλ(1) vs 9Kμ/(3K+μ) | 1e-6 bağıl | 3.16e-08 |
+
+Bu, kararlılık kontrolünü VER-001'e bağlar: ikisinden biri bozulursa
+ikisi birden kırmızıya döner.
+
+**Sınıflandırma kontrolleri.** C10 = +0.6 üç modun tamamında
+λ = 0.5 … 4.0 aralığında kararlı; C10 = −0.6 üç modda da kararsız ve ilk
+kararsızlık λ_min'de raporlanıyor.
+
+**Uygulama:** `test/check_stability.f90` · **Ölçüt:**
+[ADR 0007](../adr/0007-kararlilik-kriteri.md)
+
+---
+
 ## Sürümlere göre dağılım
 
 | Sürüm | Problemler | Sayı |
 |---|---|---|
-| v0.0.1 | VER-001, 002 | 2 · **GEÇTİ** |
+| v0.0.1 | VER-001, 002, 031 | 3 · **GEÇTİ** |
 | v0.1 | VER-010, 011, 014, 017, 018, 019, 024 | 7 |
 | v0.2 | VER-012, 027 | 2 |
 | v0.3 | VER-013, 015, 016, 020, 021, 025, 026, 028 | 8 |

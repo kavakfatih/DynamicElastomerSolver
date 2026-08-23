@@ -15,9 +15,13 @@
 !> ---------------------------------------------------------------------------
 program check_contract
    use des_kinds, only: dp, ip
+   use des_tensor, only: cc_to_mandel, cholesky_margin
    use des_material, only: mat_point_t, material_state_t, &
+                           stability_range_t, stability_result_t, &
                            DES_MAT_OK, DES_MAT_NONPHYSICAL, &
-                           DES_STAB_OK, DES_STAB_UNSTABLE
+                           DES_STAB_OK, DES_STAB_UNSTABLE, DES_STAB_UNKNOWN, &
+                           DES_MODE_UNIAXIAL, DES_MODE_EQUIBIAXIAL, &
+                           DES_MODE_PLANAR
    use des_mat_neohookean, only: mat_neohookean_t, new_neohookean
    use test_support, only: t_begin, t_check_le, t_check_true, t_check_int, &
                            t_info, t_finish
@@ -26,14 +30,17 @@ program check_contract
    real(dp), parameter :: C10 = 0.6_dp
    real(dp), parameter :: KBULK = 1.0e3_dp
 
-   type(mat_neohookean_t) :: mat, mat_bad
-   type(mat_point_t)      :: pt
-   type(material_state_t) :: st, sn, snp1
+   type(mat_neohookean_t)   :: mat, mat_bad
+   type(mat_point_t)        :: pt
+   type(material_state_t)   :: st, sn, snp1
+   type(stability_range_t)  :: rng, rng_one
+   type(stability_result_t) :: res, res_bad
 
    real(dp) :: buf_ok(3), buf_small(2)
-   real(dp) :: C(3, 3), S(3, 3), CC(3, 3, 3, 3)
-   real(dp) :: dt_factor, margin, margin_bad
-   integer(ip) :: n, stat, sstat
+   real(dp) :: C(3, 3), S(3, 3), CC(3, 3, 3, 3), M6(6, 6)
+   real(dp) :: dt_factor, margin
+   integer(ip) :: n, stat
+   logical :: pd
 
    call t_begin('Malzeme sozlesmesi  (dondurulmus arayuz davranisi)')
 
@@ -124,80 +131,95 @@ program check_contract
    call t_check_le('gecerli C -> dt_factor = 1', abs(dt_factor - 1.0_dp), 0.0_dp)
 
    ! =========================================================================
-   ! 4 -- Drucker kararlilik kontrolu
+   ! 4 -- Kararlilik kontrolu  (mod bazli monotonluk, ADR 0007)
+   !
+   ! Olcut: uc deformasyon modunda dP/dlambda > 0.
+   ! Tam tanjant pozitif tanimliligi (eski Drucker olcutu) DEGIL -- saglikli
+   ! bir Neo-Hookean onu saglamaz; karsi ornek asagida 5. maddede.
    ! =========================================================================
    call t_info('')
-   call t_info(' 4. Drucker kararliligi  (Mandel bazi + Cholesky)')
+   call t_info(' 4. Kararlilik: mod bazli dP/dlambda > 0')
 
-   !> Fiziksel malzeme: C10 > 0. Hem deforme olmamis hem deforme durumda
-   !> kararli olmali.
-   C = 0.0_dp
-   C(1, 1) = 1.0_dp; C(2, 2) = 1.0_dp; C(3, 3) = 1.0_dp
-   call mat%check_stability(C, pt, sn, snp1, sstat, margin)
-   call t_check_int('C = I    : DES_STAB_OK', sstat, DES_STAB_OK)
-   call t_check_true('C = I    : marj > 0', margin > 0.0_dp)
-   write (*, '(a,es12.5)') '            marj = ', margin
+   !> Fiziksel malzeme: C10 > 0. Uc modun tamaminda, lambda = 0.5 ... 4.0
+   !> araliginda kararli olmali.
+   mat = new_neohookean(C10, KBULK)
+   call mat%check_stability(pt, sn, snp1, rng, res)
 
-   !> Deforme ama İZOKORİK durum: F = diag(1.3, 1/1.3, 1), yani J = 1.
-   !> C = I ile yetinmemek önemli; aksi hâlde kontrolün deformasyona
-   !> gerçekten baktığı gösterilmiş olmaz.
-   C = 0.0_dp
-   C(1, 1) = 1.69_dp; C(2, 2) = 1.0_dp/1.69_dp; C(3, 3) = 1.0_dp
-   call mat%check_stability(C, pt, sn, snp1, sstat, margin)
-   call t_check_int('izokorik : DES_STAB_OK', sstat, DES_STAB_OK)
-   call t_check_true('izokorik : marj > 0', margin > 0.0_dp)
-   write (*, '(a,es12.5)') '            marj = ', margin
+   call t_check_int('C10 > 0  : DES_STAB_OK', res%stat, DES_STAB_OK)
+   call t_check_true('C10 > 0  : min egim > 0', res%min_slope > 0.0_dp)
+   call t_check_int('C10 > 0  : kararsiz mod yok', res%first_mode, 0_ip)
+   call t_check_int('hacimsel : DES_STAB_OK', res%vol_stat, DES_STAB_OK)
+   write (*, '(a,es12.5,a,es12.5)') '            min dP/dlam = ', res%min_slope, &
+      '   mu_ref ile = ', res%min_slope_n
+   write (*, '(a)') '            mod bazinda en kucuk egim:'
+   write (*, '(a,es12.5)') '              tek eksenli      : ', &
+      res%mode_min_slope(DES_MODE_UNIAXIAL)
+   write (*, '(a,es12.5)') '              esit iki eksenli : ', &
+      res%mode_min_slope(DES_MODE_EQUIBIAXIAL)
+   write (*, '(a,es12.5)') '              duzlemsel        : ', &
+      res%mode_min_slope(DES_MODE_PLANAR)
 
    !> Fiziksel olmayan malzeme: C10 < 0 negatif kayma modulu demektir.
-   !> Hacimsel terim (K = 1e3) pozitif oldugu icin ilk Cholesky pivot'u hala
-   !> pozitiftir -- kararsizlik ancak sapinsal modlarda ortaya cikar.
-   !> Kontrolun bunu yakalamasi, kosegene bakmakla yetinmedigini gosterir.
+   !> Nominal gerilme uzamayla AZALIR; her uc mod da kararsiz cikmali.
    mat_bad = new_neohookean(-C10, KBULK)
-   C = 0.0_dp
-   C(1, 1) = 1.0_dp; C(2, 2) = 1.0_dp; C(3, 3) = 1.0_dp
-   call mat_bad%check_stability(C, pt, sn, snp1, sstat, margin_bad)
-   call t_check_int('C10 < 0  : DES_STAB_UNSTABLE', sstat, DES_STAB_UNSTABLE)
-   call t_check_true('C10 < 0  : marj <= 0', margin_bad <= 0.0_dp)
-   write (*, '(a,es12.5)') '            marj = ', margin_bad
+   call mat_bad%check_stability(pt, sn, snp1, rng, res_bad)
 
-   ! -------------------------------------------------------------------------
-   ! TANI (iddia YOK) -- hacim degisimine karsi Drucker marji
+   call t_check_int('C10 < 0  : DES_STAB_UNSTABLE', res_bad%stat, DES_STAB_UNSTABLE)
+   call t_check_true('C10 < 0  : min egim < 0', res_bad%min_slope < 0.0_dp)
+   call t_check_true('C10 < 0  : ilk kararsiz mod var', res_bad%first_mode > 0_ip)
+   call t_check_true('C10 < 0  : ilk kararsizlik lam_min da', &
+                     abs(res_bad%first_lambda - rng%lam_min) < 1.0e-12_dp)
+   write (*, '(a,es12.5,a,i0,a,f6.3)') '            min dP/dlam = ', &
+      res_bad%min_slope, '   ilk mod = ', res_bad%first_mode, &
+      '   lambda = ', res_bad%first_lambda
+
+   !> Mod secimi calisiyor mu: yalnizca duzlemsel modu tara.
+   rng_one = rng
+   rng_one%modes = .false.
+   rng_one%modes(DES_MODE_PLANAR) = .true.
+   call mat%check_stability(pt, sn, snp1, rng_one, res)
+   call t_check_int('tek mod  : DES_STAB_OK', res%stat, DES_STAB_OK)
+   call t_check_int('tek mod  : taranmayan mod UNKNOWN', &
+                    res%mode_stat(DES_MODE_UNIAXIAL), DES_STAB_UNKNOWN)
+   call t_check_int('tek mod  : taranan mod OK', &
+                    res%mode_stat(DES_MODE_PLANAR), DES_STAB_OK)
+
+   ! =========================================================================
+   ! 5 -- ADR 0007 KARSI ORNEGI  (regresyon kilidi)
    !
-   ! Asagidaki tarama bir kontrol degil, bir GOZLEMDIR ve bilincli olarak
-   ! iddiaya baglanmamistir. Gosterdigi sey su: CC'nin pozitif tanimliligi
-   ! olarak tanimlanan Drucker kararliligi, sikistirilabilir Neo-Hookean'da
-   ! J birden uzaklasir uzaklasmaz kaybolur ve esik K/C10 buyudukce 1'e
-   ! yapisir. Bu bir port hatasi degildir: tanjant, sonlu farka karsi
-   ! 1e-10 bagil hatayla dogrulanmistir (VER-002).
+   ! Eski olcutun neden birakildigini kayit altina alir: SAGLIKLI bir
+   ! Neo-Hookean (C10 = +0.6, K = 1e3), F = diag(1.40, 0.85, 0.85) altinda
+   ! tam tanjant pozitif tanimliligini saglamaz.
    !
-   ! Kriterin kendisi tartismaya acilmistir; karar verilene kadar burada
-   ! yalnizca kayit altina aliniyor. CI gunlugune bakan biri sayiyi gormeli.
-   ! -------------------------------------------------------------------------
+   !   dC : CC : dC = -3.9389e+01   (dC = E5, yani (2,3) kayma yonu)
+   !
+   ! Ayni sayi uc bagimsiz yoldan dogrulanmistir (ADR 0007). Bu test,
+   ! birinin ileride "kararliligi Cholesky ile yapalim" diye geri donmesini
+   ! engeller: o olcut bu malzemeyi reddeder, yeni olcut kabul eder.
+   ! =========================================================================
    call t_info('')
-   call t_info(' TANI: hacimsel zorlanmaya karsi Drucker marji (iddia yok)')
-   call t_info('    F = s*I,  C10 = 0.6,  K = 1.0e3')
-   call scan_volumetric(mat)
+   call t_info(' 5. ADR 0007 karsi ornegi  (eski olcut neden birakildi)')
+
+   mat = new_neohookean(C10, 1.0e3_dp)
+   C = 0.0_dp
+   C(1, 1) = 1.40_dp**2; C(2, 2) = 0.85_dp**2; C(3, 3) = 0.85_dp**2
+   call mat%eval(C, pt, sn, S, CC, snp1, stat, dt_factor)
+   call t_check_int('karsi ornek: eval OK', stat, DES_MAT_OK)
+
+   call cc_to_mandel(CC, M6)
+   call cholesky_margin(M6, pd, margin)
+
+   !> Eski olcut bu SAGLIKLI malzemeyi reddediyor:
+   call t_check_true('eski olcut: pozitif tanimli DEGIL', .not. pd)
+   call t_check_le('dC:CC:dC = -3.9389e+01 (bagil)', &
+                   abs(M6(5, 5) - (-3.9388773e+01_dp))/3.9388773e+01_dp, 1.0e-6_dp)
+   write (*, '(a,es14.7)') '            M(5,5) = ', M6(5, 5)
+
+   !> Yeni olcut ayni malzemeyi kabul ediyor:
+   call mat%check_stability(pt, sn, snp1, rng, res)
+   call t_check_int('yeni olcut: DES_STAB_OK', res%stat, DES_STAB_OK)
 
    write (*, '(a)') ''
    call t_finish()
-
-contains
-
-   !> Saf hacimsel zorlanma boyunca kararlılık marjını yazdırır.
-   subroutine scan_volumetric(m)
-      type(mat_neohookean_t), intent(in) :: m
-
-      real(dp) :: Cl(3, 3), s, marg
-      integer(ip) :: i, sst
-
-      write (*, '(a)') '        s        J         durum      marj'
-      do i = -2, 4
-         s = 1.0_dp + real(i, dp)*0.01_dp
-         Cl = 0.0_dp
-         Cl(1, 1) = s*s; Cl(2, 2) = s*s; Cl(3, 3) = s*s
-         call m%check_stability(Cl, pt, sn, snp1, sst, marg)
-         write (*, '(a,f8.4,2x,f8.5,6x,i0,4x,es12.4)') '   ', s, s**3, sst, marg
-      end do
-   end subroutine scan_volumetric
 
 end program check_contract

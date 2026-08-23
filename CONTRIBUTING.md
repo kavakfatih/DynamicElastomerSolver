@@ -4,8 +4,12 @@ DES/26'ya katkıda bulunduğunuz için teşekkürler. Bu proje bir mühendislik
 aracıdır; bir hesaplama hatası, kullanıcının ürününde bir çatlak demektir.
 Aşağıdaki kurallar bu yüzden katıdır.
 
-Başlamadan önce [CLAUDE.md](CLAUDE.md) dosyasını okuyunuz — orada yazan
-kurallar insan katkıcılar için de bağlayıcıdır.
+Başlamadan önce [AGENTS.md](AGENTS.md) dosyasını okuyunuz — orada yazan
+kurallar insan katkıcılar için de bağlayıcıdır. (`CLAUDE.md` aynı dosyaya
+bağlı bir symlink'tir.)
+
+Araç zinciri ayrıntıları, derleyici bayrakları ve sıfır uyarı kuralının
+kapsamı: [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 
 ---
 
@@ -58,12 +62,20 @@ Bunlar üzerlerine yazılacak her şeyin temelidir.
 Bir tasarım kararı size hatalı görünüyorsa **sessizce etrafından
 dolaşmayın**, sessizce de uygulamayın. Söyleyin.
 
-Bu bir nezaket kuralı değil, bir mühendislik kuralıdır. Somut örnek:
-[ADR 0007](docs/adr/0007-kararlilik-kriteri.md). Genel Drucker kararlılık
-kontrolü tam olarak istendiği gibi uygulandı; sonra davranışının neredeyse
-sıkıştırılamaz malzemelerde yanıltıcı olduğu ölçüldü ve rapor edildi.
-Kontrol yerinde duruyor, karar açık — ama kimse bunu sessizce "düzeltip"
-geçmedi.
+Bu bir nezaket kuralı değil, bir mühendislik kuralıdır. Bu depoda iki kez
+işe yaradı:
+
+- **VER-001 referans değeri.** Verilen beklenti 3.599964 idi; doğrusu sonlu
+  K için 9Kμ/(3K+μ) = **3.599986**. Spesifikasyondaki değer sonlu fark
+  türevinden gelen 2.2e-5'lik bir hata taşıyordu.
+- **[ADR 0007](docs/adr/0007-kararlilik-kriteri.md) kararlılık ölçütü.**
+  Tam tanjant pozitif tanımlılığı yanlış ölçüttü: sağlıklı bir Neo-Hookean
+  (C10 = +0.6, K = 1e3) F = diag(1.40, 0.85, 0.85) altında
+  dC:CC:dC = **−3.9389e+01** verir. Ölçüt mod bazlı monotonluğa
+  (dP/dλ > 0) değiştirildi.
+
+İkisi de spesifikasyondaki hatalardı ve sorgulandıkları için düzeldiler.
+Kimse sessizce etrafından dolaşmadı.
 
 ---
 
@@ -75,8 +87,17 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-Depo **sıfır derleyici uyarısı** ile derlenir. Yeni bir uyarı üretmek
-regresyondur; `-Wall -Wextra` çıktısını temiz tutun.
+Depo **sıfır uyarı** ile derlenir ve bu kural **iki** aracı birden
+kapsar: derleyici (`-Wall -Wextra`) ve **fortls**. fortls, gfortran'ın
+yakalamadığı host değişkeni maskelemesini yakalar; o uyarı gerçek bir
+hatadır. Ayrıntı: [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
+
+```sh
+pip install fortls
+for f in src/*.f90 test/*.f90 app/*.f90; do
+  fortls --debug_rootpath . --debug_filepath "$f" --debug_diagnostics
+done
+```
 
 fpm kullanacaksanız **ayrı bir yapı dizini** verin — fpm de varsayılan
 olarak `build/` kullanır ve CMake ile aynı dizini paylaşırlarsa iki çıktı

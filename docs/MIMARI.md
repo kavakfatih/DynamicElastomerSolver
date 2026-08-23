@@ -165,7 +165,7 @@ tehlikelidir.
 |---|---|---|
 | `des_kinds` | 5 | Kayan nokta ve tamsayı tür tanımları |
 | `des_tensor` | 5 | 3x3 tensör cebiri, Mandel indirgemesi, Cholesky |
-| `des_material` | 4 | Malzeme sözleşmesi, durum tipi, Drucker kontrolü |
+| `des_material` | 4 | Malzeme sözleşmesi, durum tipi, kararlılık taraması |
 | `des_mat_neohookean` | 4 | Sıkıştırılabilir Neo-Hookean malzemesi |
 
 `des_material` yalnızca `des_kinds` ve `des_tensor`a bağımlıdır. Hiçbir
@@ -175,19 +175,23 @@ malzeme başka bir malzemeyi bilmez.
 
 ## Kararlılık kontrolü nerede duruyor
 
-Drucker kararlılık kontrolü **temel sınıfta bir kez** yazılmıştır ve
-yalnızca `eval`e dayanır. Bu, ileride eklenecek her malzemenin — Ogden,
+Kararlılık kontrolü **temel sınıfta bir kez** yazılmıştır ve yalnızca
+`eval`e dayanır. Bu, ileride eklenecek her malzemenin — Ogden,
 viskoelastisite, Mullins, kullanıcı malzemeleri — kontrolü bedava alması
 demektir.
 
-Uygulama: tanjant ortonormal Mandel/Kelvin bazında 6x6 matrise indirgenir,
-sonra Cholesky denenir. Cholesky'nin başarısı tam olarak pozitif
-tanımlılıktır; özdeğer çözücüsüne gerek yoktur. Bu, çekirdeğin LAPACK'e
-bağımlı olmadan kararlılık kontrolü yapabilmesi anlamına gelir.
+Ölçüt **mod bazlı monotonluktur**: tek eksenli, eşit iki eksenli ve
+düzlemsel deformasyon modlarında nominal gerilmenin uzamaya göre türevi
+pozitif olmalıdır (`dP/dlambda > 0`). Yanal uzamalar, modun serbest Cauchy
+bileşeni sıfır olacak şekilde ikiye bölmeyle çözülür.
 
-Kriterin **anlamı** tartışmaya açıktır: neredeyse sıkıştırılamaz malzemelerde
-J birden uzaklaşır uzaklaşmaz "kararsız" bildirir. Ölçümler ve açık karar:
-[ADR 0007](adr/0007-kararlilik-kriteri.md).
+Tam tanjantın pozitif tanımlılığı (Drucker koşulu) **kullanılmaz**:
+sağlıklı bir Neo-Hookean onu sağlamaz, çünkü serbest enerji C uzayında
+konveks değil polikonveksdir. Karşı örnek, üç bağımsız doğrulaması ve
+ölçüt değişikliğinin gerekçesi: [ADR 0007](adr/0007-kararlilik-kriteri.md).
+
+Bu bir tarama kontrolüdür, nokta kontrolü değil. Kalibrasyon ve model
+doğrulama zamanında çağrılır; Newton döngüsünün içinde değil.
 
 ---
 
