@@ -124,6 +124,7 @@ Bu sürümde geçen doğrulamalar:
 | VER-001 | Tek eksenli gerilme, Neo-Hookean | Analitik tam çözüm | bağıl hata 4.8e-06 … 5.9e-05 |
 | VER-002 | Tutarlı tanjant (consistent tangent) | Sonlu fark | bağıl hata ≤ 1.1e-10 |
 | VER-031 | Mod bazlı kararlılık, dP/dλ | Bağımsız referans tablosu | mutlak fark ≤ 4.3e-06 |
+| VER-032 | Eksenel simetrik Q4 elemanı | Analitik + sonlu fark | tanjant ≤ 5.0e-10, gerilme ≤ 9.3e-15 |
 
 VER-001'de küçük şekil değiştirme elastisite modülü **3.599986** ölçülür;
 sıkıştırılamaz sınırdaki kesin değer 6·C10 = 3.600000, sonlu K = 1e5 için

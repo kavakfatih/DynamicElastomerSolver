@@ -176,6 +176,7 @@ tehlikelidir.
 | `des_mesh` | 4 | Düğüm/eleman dizileri, DOF haritası, global DOF paylaşımı |
 | `des_sparse` | 5 | CSR depolama, montaj, RCM sıralaması |
 | `des_element` | 4 | Eleman sözleşmesi (soyut) |
+| `des_elem_axi_q4` | 4 | Eksenel simetrik Q4, full ve F-bar |
 
 `des_material` yalnızca `des_kinds` ve `des_tensor`a bağımlıdır. Hiçbir
 malzeme başka bir malzemeyi bilmez.
