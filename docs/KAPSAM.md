@@ -23,8 +23,26 @@ değil.
 Burulmanın neden ayrıca sayıldığı: burulmalı titreşim damperi tasarımının
 merkezinde tork-açı eğrisi vardır. Bunu eksenel simetrik bir kesitte
 u_theta serbestlik derecesiyle çözmek, aynı problemi 3B'de çözmekten iki
-mertebe ucuzdur. Genel amaçlı paketler bu formülasyonu ya vermez ya da
-3B'ye zorlar.
+mertebe ucuzdur.
+
+**Burulmanın kendisi bir pazar boşluğu değildir.** ANSYS'te PLANE182 ve
+PLANE183 `KEYOPT(3)=6` ile bunu yapar; Abaqus'te CGAX eleman ailesi
+vardır. Boşluk, bu seçeneğin taşıdığı kısıtlardadır: ANSYS
+dokümantasyonuna göre burulmalı eksenel simetrik seçenekte yeniden
+bölgeleme (rezoning) ve nonlineer adaptivite desteklenmiyor, yalnızca tam
+integrasyon mevcut, ve temas elemanlarıyla kullanıldığında hoop yönündeki
+sürtünme hesaba katılmıyor.
+
+DES/26'nın hedefi bu yüzden tek bir özellik değil, bir **birleşim**dir:
+burulma + otomatik yeniden ağ örme + hoop yönünde sürtünme, aynı analizde.
+Burç ve TVD parçalarında üçü aynı anda gerekir.
+
+> **Rekabet iddiaları hakkında uyarı.** Bu kısıtlar, alıntılandıkları
+> sürümlerin dokümantasyonunda belgelenmiştir ve sürümden sürüme değişir.
+> Kamuya açık herhangi bir rekabet iddiası yayınlanmadan önce güncel
+> sürüme karşı yeniden doğrulanmalıdır. İlgili lisans sözleşmesi
+> karşılaştırmalı başarım (benchmark) yayınını yasaklıyorsa, karşılaştırma
+> yayınlanmamalıdır.
 
 ### Malzemeler
 

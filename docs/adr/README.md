@@ -35,8 +35,9 @@ Dosya adı: `NNNN-kisa-baslik.md`, sıfır dolgulu dört haneli numara.
 | [0004](0004-copyleft-bagimlilik-yok.md) | Copyleft bağımlılık yok — kaynak okumak dahil | KABUL EDİLDİ |
 | [0005](0005-temas-ertelendi.md) | Temas v1.x'e ertelendi | KABUL EDİLDİ |
 | [0006](0006-malzeme-sozlesmesi.md) | Malzeme sözleşmesi donduruldu | KABUL EDİLDİ |
-| [0007](0007-kararlilik-kriteri.md) | Kararlılık kriteri: Drucker mi, eliptiklik mi | **ÖNERİLDİ — karar bekliyor** |
+| [0007](0007-kararlilik-kriteri.md) | Kararlılık ölçütü: mod bazlı monotonluk | KABUL EDİLDİ |
 | [0008](0008-cok-dillilik.md) | Çok dillilik ve ondalık ayırıcı | KABUL EDİLDİ |
+| [0009](0009-eleman-sozlesmesi.md) | Eleman sözleşmesi | KABUL EDİLDİ |
 
 ---
 

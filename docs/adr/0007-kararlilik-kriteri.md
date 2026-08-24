@@ -1,193 +1,335 @@
-# ADR 0007 — Kararlılık kriteri: Drucker mi, kuvvetli eliptiklik mi
+# ADR 0007 — Kararlılık ölçütü: mod bazlı monotonluk
 
-**Durum:** ÖNERİLDİ — **karar bekliyor**
+**Durum:** KABUL EDİLDİ
+**Yerini aldığı:** v0.0.1'deki tam tanjant pozitif tanımlılığı (Drucker) ölçütü
 
-Bu ADR bir karar kaydetmiyor; ölçülmüş bir bulguyu kaydediyor ve bir karar
-istiyor. Mevcut uygulama değiştirilmedi.
+Uygulama: [`src/des_material.f90`](../../src/des_material.f90) —
+`check_mode_stability`
+Doğrulama: VER-031, [`test/check_stability.f90`](../../test/check_stability.f90)
 
 ---
 
 ## Bağlam
 
-v0.0.1'de genel bir kararlılık kontrolü, malzeme temel sınıfına konuldu
-([ADR 0006](0006-malzeme-sozlesmesi.md)). Tasarım şöyleydi:
+v0.0.1'de malzeme temel sınıfına genel bir kararlılık kontrolü konulmuştu:
 
 > Drucker kararlılığı `dS:dE > 0` ister. `dE = dC/2` ve `dS = (1/2)·CC:dC`
 > ile bu koşul, `CC`'nin simetrik ikinci mertebe tensörler uzayında pozitif
 > tanımlı olmasına indirgenir. Tanjantı ortonormal Mandel/Kelvin bazında
-> 6x6 matrise indirge, Cholesky dene. Başarı = tam olarak pozitif
-> tanımlılık.
+> 6x6 matrise indirge, Cholesky dene.
 
-Bu, olduğu gibi uygulandı ve doğru çalışıyor. Sorun uygulamada değil,
-**kriterin ne söylediğinde**.
+Bu, tarif edildiği gibi uygulandı ve matematiksel olarak doğru çalıştı.
+Sorun uygulamada değil, **ölçütün kendisindeydi**.
 
-## Bulgu
+## Karar
 
-Uygulama sırasında, F = diag(1.20, 0.95, 0.95) — yani %20 çekme, tamamen
-sıradan bir elastomer durumu — için kontrol `DES_STAB_UNSTABLE` döndürdü.
+Tam tanjant pozitif tanımlılığı ölçütü **kaldırıldı**. Yerine **mod bazlı
+monotonluk kontrolü** kondu.
 
-Bunun bir port hatası olmadığı üç bağımsız yolla doğrulandı:
+Üç deformasyon modunda, nominal (1. Piola-Kirchhoff) gerilmenin uzama
+oranına göre türevi pozitif olmalıdır:
 
-1. **Tanjant zaten doğrulanmış durumda.** VER-002, aynı deformasyon
-   gradyanında `CC`'yi `S`'nin merkezi farkına karşı 1e-10 bağıl hatayla
-   doğruluyor. Formül doğru.
-2. **Mandel indirgemesi ve Cholesky teoriye karşı doğrulandı.** C = I'de
-   marjın `2μ / (2μ·(2/3) + K)` olması gerekir; K = 1e3, μ = 1.2 için bu
-   2.396e-03'tür ve ölçülen değer birebir aynıdır.
-3. **Elle yeniden türetildi.** Aşağıdaki mekanizma analitik olarak
-   doğrulandı.
+$$\frac{dP}{d\lambda} > 0$$
 
-### Mekanizma
+| Mod | Kinematik | Yanal uzama koşulu |
+|---|---|---|
+| Tek eksenli | $F = \mathrm{diag}(\lambda, x, x)$ | $\sigma_{22} = 0$ |
+| Eşit iki eksenli | $F = \mathrm{diag}(\lambda, \lambda, x)$ | $\sigma_{33} = 0$ |
+| Düzlemsel (saf kayma) | $F = \mathrm{diag}(\lambda, 1, x)$ | $\sigma_{33} = 0$ |
 
-Hacimsel tanjant:
+Yanal uzamalar ikiye bölme (bisection) ile çözülür. Tarama aralığı
+varsayılan olarak $\lambda = 0.5 \ldots 4.0$'dır ve çağıran tarafından
+verilebilir. Sonuç, ilk kararsızlığın hangi **modda** ve hangi
+**uzamada** başladığını döndürür.
 
-$$
-\mathbb{C}_{\text{vol}} = K\left[\, J(2J-1)\,(\mathbf{C}^{-1} \otimes \mathbf{C}^{-1})
-\;-\; 2J(J-1)\,\mathbb{I}_{C} \,\right]
-$$
+Hacimsel kararlılık ayrıca ve trivial olarak raporlanır: $\kappa_{ref} > 0$.
 
-İkinci terim `J > 1` için negatiftir ve `K` ile ölçeklenir. Kayma
-bileşenlerinde `Cinv ⊗ Cinv` hiç katkı vermez (köşegen `C` için
-`Cinv_12 = 0`), dolayısıyla orada **yalnızca negatif terim kalır**:
+Bu, ANSYS ve Abaqus'ün hiperelastik kalibrasyonda kullandığı ölçüttür.
 
-$$
-\mathbb{C}_{1212} = \tfrac{1}{3} a_{\text{iso}} I_1 \,\mathbb{I}_{C,1212}
-\;-\; 2KJ(J-1)\,\mathbb{I}_{C,1212}
-$$
+---
 
-İkinci terim `K` mertebesinde, birincisi `C10` mertebesindedir.
-`K/C10 ≫ 1` olan her malzemede ikincisi kazanır.
+## Neden tam tanjant pozitif tanımlılığı YANLIŞ ölçüt
 
-F = diag(1.20, 0.95, 0.95), C10 = 0.6, K/C10 = 1.7e3 için Mandel matrisi:
+### Karşı örnek
+
+**SAĞLIKLI** bir Neo-Hookean, $C_{10} = +0.6 > 0$, $K = 10^3$:
+
+$$F = \mathrm{diag}(1.40,\; 0.85,\; 0.85), \qquad
+d\mathbf{C} : \mathbb{C} : d\mathbf{C} = -3.9389 \times 10^{1}$$
+
+Burada $d\mathbf{C}$, Mandel bazının $(2,3)$ kayma yönü
+$E_5 = (\mathbf{e}_2\otimes\mathbf{e}_3 + \mathbf{e}_3\otimes\mathbf{e}_2)/\sqrt{2}$'dir.
+
+Bu değer **üç bağımsız yoldan** doğrulanmıştır:
+
+1. Analitik tensör kontraksiyonu
+2. Enerjinin sonlu farkla ikinci türevi, $4\,d^2\Psi/dt^2$
+3. 6x6 Mandel matrisinin özdeğer ayrıştırması
+
+Bu depoda ölçülen değer: **-3.9388773e+01** — dördüncü bağımsız doğrulama
+([`test/check_contract.f90`](../../test/check_contract.f90), 5. bölüm).
+Aynı noktadaki Mandel köşegeni:
 
 ```
-  5.3325E+02   9.9036E+02   9.9036E+02   0.0000E+00   0.0000E+00   0.0000E+00
-  9.9036E+02   1.3586E+03   1.5807E+03   0.0000E+00   0.0000E+00   0.0000E+00
-  9.9036E+02   1.5807E+03   1.3586E+03   0.0000E+00   0.0000E+00   0.0000E+00
-  0.0000E+00   0.0000E+00   0.0000E+00  -1.3921E+02   0.0000E+00   0.0000E+00
-  0.0000E+00   0.0000E+00   0.0000E+00   0.0000E+00  -2.2211E+02   0.0000E+00
-  0.0000E+00   0.0000E+00   0.0000E+00   0.0000E+00   0.0000E+00  -1.3921E+02
+  M(1,1) =  2.6342988E+02      M(4,4) = -1.4519586E+01
+  M(2,2) =  1.9424235E+03      M(5,5) = -3.9388773E+01
+  M(3,3) =  1.9424235E+03      M(6,6) = -1.4519586E+01
 ```
 
-Üç kayma köşegeni doğrudan negatif. Normal blok da pozitif tanımlı değil;
-Cholesky ikinci pivotta düşüyor (normalize pivot -0.354).
+Üç kayma köşegeni birden negatiftir.
 
-### Eşik taraması
+### Neden bu bir hata değil, fizik
 
-Saf hacimsel zorlanma (F = s·I), C10 = 0.6, normalize Cholesky marjı:
+Neo-Hookean serbest enerjisi $\mathbf{C}$ uzayında **konveks değildir**;
+**polikonveks**tir. Konvekslik, sonlu şekil değiştirmede zaten fiziksel
+olarak istenmeyen bir şarttır — malzeme çerçeve bağımsızlığıyla (objectivity)
+çelişir. $\mathbf{S}$, $\mathbf{E}$'nin monoton bir fonksiyonu olmak zorunda
+değildir.
 
-| K/C10 | J = 0.941 | J = 0.970 | **J = 1.000** | J = 1.015 | J = 1.061 | J = 1.093 |
-|---|---|---|---|---|---|---|
-| 1.7e1 | +3.15e-01 | +2.60e-01 | **+2.03e-01** | +1.16e-01 | +8.65e-02 | +2.61e-02 |
-| 1.7e3 | +1.20e-01 | +6.17e-02 | **+2.35e-03** | −1.86e-01 | −2.54e-01 | −4.00e-01 |
-| 1.7e5 | +1.18e-01 | +5.94e-02 | **+2.35e-05** | −1.91e-01 | −2.60e-01 | −4.05e-01 |
+Deviatorik altuzaya geçmek de düzeltmez: negatif özdeğer orada da vardır.
+Ayrıca izdüşürülmüş $\mathbb{P}:\mathbb{C}:\mathbb{P}$ tensörü hidrostatik
+yönde tanımı gereği tekildir; Cholesky her zaman patlar.
 
-İzokorik zorlanma (F = diag(λ, 1/λ, 1), yani J = 1 tam):
+### İki ayrı mekanizma, ikisi de ölçüldü
 
-| K/C10 | λ = 1.25 | λ = 1.50 | λ = 2.00 | λ = 2.50 |
+Bu depoda yapılan tarama, ihlalin **iki bağımsız kaynağı** olduğunu
+gösteriyor:
+
+**1. Hacimsel penaltı terimi.** $\mathbb{C}_{vol}$ içindeki
+$-2KJ(J-1)\,\mathbb{I}_C$ terimi $J > 1$ için negatiftir ve $K$ ile
+ölçeklenir. Kayma bileşenlerinde $\mathbf{C}^{-1}\otimes\mathbf{C}^{-1}$ hiç
+katkı vermez, dolayısıyla orada yalnızca negatif terim kalır. Yukarıdaki
+karşı örnekte baskın mekanizma budur — aynı $F$'de $K$ taraması:
+
+| K | 0.1 | 1 | 10 | 100 | 1e3 | 1e4 | 1e5 |
+|---|---|---|---|---|---|---|---|
+| M(5,5) | +5.17 | +5.13 | +4.73 | +0.72 | **−39.4** | **−440** | **−4452** |
+
+**2. İzokorik kısmın kendi konveks olmayışı.** Penaltı tamamen kaldırılsa
+bile ($K = 10^{-8}$, saf izokorik $F = \mathrm{diag}(\lambda,
+\lambda^{-1/2}, \lambda^{-1/2})$, $J = 1$) tanjant pozitif tanımlı
+değildir:
+
+| λ | $\mathbb{C}_{1111}$ | min köşegen | **min özdeğer** |
+|---|---|---|---|
+| 1.00 | +1.600000e+00 | +1.600000e+00 | **+3.0e-08** |
+| 1.05 | +1.187773e+00 | +1.187773e+00 | **−1.157680e-02** |
+| 1.20 | +4.869685e-01 | +4.869685e-01 | **−1.197680e-01** |
+| 1.40 | +1.245513e-01 | +1.245513e-01 | **−2.149380e-01** |
+| 1.58 | +3.016304e-03 | +3.016304e-03 | **−2.312103e-01** |
+| 1.60 | −4.882811e-03 | −4.882811e-03 | **−2.308191e-01** |
+| 2.00 | −6.666667e-02 | −6.666667e-02 | **−1.922301e-01** |
+
+### İhlal 1.58'de BAŞLAMIYOR
+
+Bu tablonun okunma biçimi kritiktir. $\mathbb{C}_{1111}$ bileşeni
+$\lambda \approx 1.58$'de işaret değiştirir, ama **pozitif tanımlılık çok
+daha önce kaybolur**: en küçük özdeğer $\lambda = 1.05$'te zaten
+negatiftir.
+
+$\lambda = 1$'de en küçük özdeğer $3K = 3\times10^{-8}$'dir — yani penaltı
+sıfıra götürüldüğünde matris orada yalnızca pozitif **yarı** tanımlıdır
+(hacimsel mod sıfır özdeğerdir). $\lambda$ birimden ayrılır ayrılmaz o
+mod negatife döner.
+
+Doğru cümle şudur: **saf izokorik Neo-Hookean'da tanjant, pozitif
+tanımlılık anlamında pratikte hiçbir yerde ($\lambda > 1$) sağlanmaz.**
+1.58 yalnızca tek bir bileşenin işaret değiştirdiği yerdir; ölçütle ilgisi
+yoktur.
+
+### UYARI: KÖŞEGEN BAZ-BAĞIMLIDIR, POZİTİF TANIMLILIK DEĞİLDİR
+
+Bu tablodan **"min köşegen > 0 ise kararlı"** diye bir ölçüt çıkarmak
+sessizce yanlıştır. İki ayrı sebepten.
+
+**Birinci sebep: köşegen keyfîdir.** Aynı tensörün Mandel köşegeni,
+seçilen ortonormal baza göre DEĞİŞİR; özdeğerleri değişmez. $\lambda =
+1.60$'ta aynı tensör, iki farklı ortonormal bazda:
+
+```
+  standart Mandel/Kelvin bazi : [-0.0049, 7.8438, 7.8438, 7.8029, 1.9050, 1.9050]
+  hidrostatik yon ilk sirada  : [ 3.9782, 4.8770, 6.8276, 1.9050, 7.8029, 1.9050]
+  ozdegerler (HER IKISI ICIN) : [-0.2308, 1.9050, 1.9050, 7.8029, 7.8029, 8.1107]
+```
+
+Birinci bazda bir köşegen negatif, ikincisinde **altısı da pozitif** —
+ama tensör aynı tensör. Dolayısıyla köşegene bakan bir ölçüt, ölçütün
+kendisini keyfî bir baz seçimine bağlar. Özdeğerler baz değişimi altında
+değişmez; kararlılık kararı ancak onlara bakabilir.
+
+(Bu depodaki ölçümler standart Mandel/Kelvin bazındadır. Kayma
+sıralaması burada 4:(1,2), 5:(2,3), 6:(1,3)'tür; yukarıdaki ilk satırda
+kayma girdileri farklı sırada listelenmiştir, küme aynıdır.)
+
+**İkinci sebep: bütün köşegenler pozitifken bile matris indefinite
+olabilir.** Standart bazda $\lambda = 1.40$'ta altı köşegen de
+pozitiftir:
+
+```
+  M(1,1) = +1.245513e-01      M(4,4) = +1.936327e+00
+  M(2,2) = +4.844373e+00      M(5,5) = +5.313280e+00
+  M(3,3) = +4.844373e+00      M(6,6) = +1.936327e+00
+```
+
+Yine de özdeğerler:
+
+```
+  -2.1494e-01   +1.9363e+00   +1.9363e+00
+  +4.7150e+00   +5.3133e+00   +5.3133e+00
+```
+
+En küçüğü **negatif**. Köşegen pozitifliği, pozitif tanımlılığın ne
+gerek ne de yeter şartıdır.
+
+**Tablodaki sütun çakışması tesadüf değildir.** Standart Mandel/Kelvin
+bazında birinci baz tensörü $E_1 = \mathbf{e}_1\otimes\mathbf{e}_1$
+olduğu için $M_{11} = \mathbb{C}_{1111}$ **tanım gereğidir**. Yukarıdaki
+tabloda min köşegenin her satırda $\mathbb{C}_{1111}$'e eşit çıkması,
+bu tanımın ve bu deformasyon ailesinde $M_{11}$'in en küçük köşegen
+olmasının birlikte sonucudur — başka bir bazda ikisi de değişir.
+
+Yani sorun yalnızca penaltı formülasyonunun bir yan etkisi değildir; ölçüt
+karışık u-p formülasyonuna (v0.3) geçildiğinde de yanlış kalırdı.
+
+### Normalizasyon sorunu
+
+v0.0.1'de marj, $\max|M_{aa}|$ ile normalize ediliyordu. Bu ölçekleme
+neredeyse sıkıştırılamaz malzemelerde anlamını yitiriyordu: köşegenin en
+büyük elemanı $K$ mertebesindeyken deviatorik özdeğerler $\mu$
+mertebesindedir, dolayısıyla normalize marj $\mu/K$ ile sıfıra gidiyordu.
+$C = I$'de ölçülen değerler:
+
+| K/C10 | 1.7e1 | 1.7e3 | 1.7e5 |
+|---|---|---|---|
+| normalize marj | 2.03e-01 | 2.35e-03 | 2.35e-05 |
+
+Yani gerçek kauçuk için ($K/\mu \approx 10^4 \ldots 10^6$) ölçüt zaten
+bıçak sırtındaydı. Yeni ölçütte bu sorun ortadan kalkıyor: eğimler
+$\mu_{ref}$ ile boyutsuzlaştırılıyor ve normalize edilmiş en küçük eğim
+büyük uzamada $\to 1$'e gidiyor (sıkıştırılamaz Neo-Hookean için
+$dP/d\lambda \to 2C_{10} = \mu_{ref}$). Ölçülen: **1.000965**.
+
+---
+
+## Doğrulanmış referans değerler
+
+$C_{10} = 0.6$, $K = 10^5$, tek eksenli. "Ölçülen" sütunu bu depodadır.
+
+| λ | P (ref) | P (ölçülen) | dP/dλ (ref) | dP/dλ (ölçülen) |
 |---|---|---|---|---|
-| 1.7e1 | +5.33e-02 | +1.93e-02 | +2.38e-03 | +2.98e-04 |
-| 1.7e3 | +6.57e-04 | +2.54e-04 | +6.40e-05 | +2.36e-05 |
-| 1.7e5 | +6.58e-06 | +2.54e-06 | +6.43e-07 | +2.38e-07 |
+| 0.50 | −4.19999 | −4.199986 | 20.39992 | 20.399923 |
+| 0.70 | −1.60897 | −1.608974 | 8.19706 | 8.197060 |
+| 1.00 | 0.00000 | 0.000000 | **3.59999** | **3.599986** |
+| 1.50 | +1.26666 | 1.266658 | 1.91109 | 1.911089 |
+| 2.00 | +2.09998 | 2.099976 | 1.49996 | 1.499961 |
+| 3.00 | +3.46658 | 3.466582 | 1.28880 | 1.288802 |
+| 4.00 | +4.72480 | 4.724797 | 1.23735 | 1.237346 |
 
-### Bulgunun okunuşu
+En büyük sapma 4.3e-06; referans beş ondalık haneye yuvarlanmış olduğu
+için tek başına ±5e-6 belirsizlik taşır.
 
-- Gerçekçi kauçuk için (`K/C10 ≈ 1e4 … 1e6`) kararlılık, **%0.5 hacimsel
-  zorlanmada** kaybolur.
-- `J = 1`'deki marj `1/(K/C10)` ile sıfıra yapışır: kriter neredeyse
-  sıkıştırılamaz malzemede zaten bıçak sırtındadır.
-- İzokorik durumlar λ = 2.5'e kadar "kararlı" kalır, ama marj yine
-  `1/(K/C10)` ile söner — yani kararı belirleyen şey malzemenin fiziği
-  değil, penaltı katılığıdır.
+$C_{10} = -0.6$ (fiziksel olmayan malzeme) aynı noktalarda:
 
-**Sonuç: bu kontrol, pratikte bir malzeme kararlılığı göstergesi değil,
-bir "J ≈ 1 mi?" detektörüdür.**
+| λ | dP/dλ (ref) | dP/dλ (ölçülen) |
+|---|---|---|
+| 1.00 | −3.60001 | −3.600014 |
+| 1.50 | −1.91113 | −1.911134 |
+| 2.00 | −1.50004 | −1.500039 |
 
-## Bu neden bir hata değil
+Test her iki malzemeyi de doğru sınıflandırır.
 
-Drucker kararlılığı — referans konfigürasyonda, `S`–`E` eşleniği üzerinde
-tanımlanan malzeme tanjantının pozitif tanımlılığı — iyi kurulmuş
-hiperelastik modeller için **yeterli ama gereğinden çok güçlü** bir
-koşuldur. Polikonveks ve kuvvetli eliptik malzemelerin bunu sonlu
-deformasyonda ihlal etmesi, literatürde bilinen ve beklenen bir durumdur.
-`S`, `E`'nin monoton bir fonksiyonu olmak zorunda değildir.
+### Çapraz doğrulama: dP/dλ(1) = E
 
-Yani kriter tam olarak tanımının gerektirdiğini yapıyor. Sorun,
-kullanıcıya "kararsız" diye sunulan şeyin, kullanıcının anladığı
-kararsızlık olmaması.
+$\lambda = 1$'deki eğim doğrudan elastisite modülüdür. Bu, kararlılık
+kontrolünü VER-001 ile birbirine bağlar:
 
-## Bu neden önemli
+```
+dP/dlambda (lambda = 1)   = 3.599986
+E = 9*K*mu/(3*K+mu)       = 3.599986      bagil fark 3.16e-08
+```
 
-DES/26'nın hedef ürünlerinin hepsi neredeyse sıkıştırılamazdır. Dahası,
-yol haritasının önemli bir kısmı (v0.1'de F-bar, v0.3'te karışık u-p) tam
-olarak `J`'nin 1'den saptığı durumları yönetmek içindir.
+İkisinden biri bozulursa ikisi birden kırmızıya döner. Bu, bedava gelen
+bir tutarlılık kilididir.
 
-İki somut risk:
+---
 
-1. **Newton yinelemesi sırasında yanlış alarm.** Ara yinelemelerde `J`
-   geçici olarak 1'den uzaklaşır. Kararlılık bayrağı her yinelemede
-   kırmızıya döner.
-2. **Uyarı körlüğü.** Kullanıcı iki hafta içinde bu uyarıyı yok saymayı
-   öğrenir. Bir kararlılık uyarısı için olabilecek en kötü sonuç budur —
-   gerçek bir kararsızlık geldiğinde de görülmez.
+## Arayüz değişikliği
 
-## Değerlendirilen seçenekler
+`eval` imzasına **dokunulmadı**. Değişen yalnızca kararlılık kontrolü:
 
-### (a) Olduğu gibi bırak, kriteri belgele
+```fortran
+! ÖNCE (v0.0.1)
+subroutine check_stability(this, C, pt, state_n, state_np1, stat, margin)
 
-Kod değişmez; `DES_STAB_UNSTABLE`'ın anlamı dokümantasyonda ve
-`messages/*.toml` içinde netleştirilir.
+! SONRA
+subroutine check_stability(this, pt, state_n, state_np1, rng, res)
+   type(stability_range_t),  intent(in)  :: rng   ! aralık + mod listesi
+   type(stability_result_t), intent(out) :: res   ! (mod, lambda) + eğimler
+```
 
-*Artı:* iş yok, sözleşme donmuş kalır.
-*Eksi:* varsayılan davranış yanlış alarm üretmeye devam eder. Belgelemek,
-kullanıcının okuyacağı anlamına gelmez.
+Tek bir $\mathbf{C}$ almak yerine bir uzama aralığı ve mod listesi alır;
+ilk kararsızlığın (mod, λ) çiftini döndürür. Bu, kalibrasyon modülünün
+(v0.4) doğrudan kullanacağı arayüzdür — kullanıcıya "Ogden katsayılarınız
+düzlemsel modda λ = 2.7'den sonra kararsız" cümlesi kurulabilmelidir.
 
-### (b) Kuvvetli eliptiklik ekle, varsayılan yap — **önerilen**
+`material_t`'ye iki referans modül eklendi:
 
-`check_ellipticity` eklenir: akustik tensör
+- `mu_ref` — referans kayma modülü (Neo-Hookean için $2C_{10}$).
+  Normalizasyon ve raporlama.
+- `kappa_ref` — referans hacim modülü. Spesifikasyon yalnızca `mu_ref`
+  istiyordu; hacimsel kararlılığı ($\kappa > 0$) temel sınıftan
+  raporlayabilmek için ikincisi de gerekti.
 
-$$
-Q_{ik}(\mathbf{n}) = A_{AiBk}\, n_A n_B, \qquad
-A_{AiBk} = F_{iJ} F_{kL}\, \mathbb{C}_{AJBL} + S_{AB}\,\delta_{ik}
-$$
+---
 
-her birim `n` yönünde pozitif tanımlı mı diye bakılır (2B'de yön açısı
-taranarak). `check_stability` varsayılanı buna bağlanır; mevcut Drucker
-kontrolü `check_tangent_pd` adıyla erişilebilir kalır.
+## Sonuçlar
 
-*Artı:* gerçek malzeme kararsızlığını (lokalizasyon, kayma bandı) yakalar;
-kullanıcıya anlamlı bir uyarı verir. Jeometrik (initial stress) terimi
-içerdiği için Newton davranışıyla da daha ilgilidir.
-*Eksi:* iş var. Yön taraması maliyetli (2B'de kabul edilebilir). Temel
-sınıf sözleşmesi genişler — ADR 0006 güncellenmeli.
+**Olumlu**
 
-### (c) Yalnızca yeniden adlandır
+- Sağlıklı kauçuk artık "kararsız" diye reddedilmiyor
+- Kullanıcının anladığı ve deney verisiyle doğrudan karşılaştırabildiği ölçüt
+- İlk kararsızlığın modu ve uzaması raporlanıyor — kalibrasyon için gereken bilgi
+- VER-001 ile çapraz doğrulama bedava geliyor
+- Hâlâ yalnızca `eval`e dayanıyor: bütün malzemeler bedava alıyor
 
-Mevcut kontrol `check_tangent_pd` olur, `DES_STAB_*` kodları
-`DES_TANPD_*` olur. "Kararlılık" adı ileride eliptikliğe ayrılır.
+**Olumsuz**
 
-*Artı:* ucuz ve dürüst; yanlış isimlendirme hemen ortadan kalkar.
-*Eksi:* kullanıcı hâlâ anlamlı bir kararlılık kontrolünden yoksun.
+- Tek bir $\mathbf{C}$ için "bu noktada kararlı mı" sorusu artık
+  sorulamıyor. Ölçüt bir tarama, nokta kontrolü değil. Newton döngüsü
+  içinde çağrılacak bir şey değildir; kalibrasyon ve model doğrulama
+  zamanındadır.
+- Maliyeti yüksek: mod × örnek × 2 (merkezi fark) × bisection. Varsayılan
+  ayarlarda ~26 bin `eval` çağrısı. Kalibrasyonda kabul edilebilir,
+  çözüm döngüsünde değil.
+- Ölçüt yalnızca üç kanonik modu tarar. Bu modların dışında kalan bir
+  kararsızlığı yakalamaz.
 
-## Öneri
+## Gelecek seçenek: kuvvetli eliptiklik
 
-**(b)**, v0.4'te yapılmak üzere. O sürümde Ogden ve Mullins geliyor;
-gerçek malzeme kararsızlığı ilk kez orada fiilen mümkün hâle gelecek
-(Mullins yumuşaması yeterince ilerlediğinde eliptiklik gerçekten
-kaybolabilir). Ara dönemde **(c)**'nin yeniden adlandırma kısmı ucuz bir
-iyileştirme olur.
+Matematiksel olarak daha titiz alternatif **kuvvetli eliptiklik
+(Legendre-Hadamard)** koşuludur; iyi-konumlanmışlığı (well-posedness)
+garanti eden gerçek şart odur ve Neo-Hookean $C_{10} > 0$ için her yerde
+sağlanır:
 
-## Şimdilik yapılanlar
+$$Q_{ik}(\mathbf{n}) = A_{AiBk}\, n_A n_B \succ 0 \quad \forall\, \mathbf{n},
+\qquad A_{AiBk} = F_{iJ}F_{kL}\,\mathbb{C}_{AJBL} + S_{AB}\delta_{ik}$$
 
-- Kod **değiştirilmedi**. Kriter, ADR 0006'da tanımlandığı gibi duruyor.
-- `check_contract` testindeki kararlılık kontrolleri, spesifikasyonun
-  gerçekten istediği iki iddiaya indirildi: C = I'de kararlı, C10 < 0'da
-  kararsız. Üçüncü olarak izokorik bir deforme durum (λ = 1.3, J = 1)
-  eklendi — kontrolün yalnızca C = I'de çalışmadığını göstermek için.
-- Aynı teste **iddiaya bağlanmamış bir tanı taraması** kondu: J'ye karşı
-  marj tablosu her CI çalışmasında basılıyor. Böylece bulgu görünür
-  kalıyor, ama kriter ileride değiştirilirse sahte bir regresyon
-  üretmiyor.
+**Şimdi uygulanmıyor.** Kalibrasyon için mod bazlı kontrol hem yeterli hem
+de kullanıcının anladığı şey. Eliptiklik, gerçek malzeme kararsızlığının
+(lokalizasyon, kayma bandı) fiilen mümkün hâle geldiği v0.4'te — Ogden ve
+Mullins ile birlikte — yeniden değerlendirilecektir.
+
+## Değerlendirilen alternatifler
+
+**Deviatorik altuzayda pozitif tanımlılık.** Reddedildi: negatif özdeğer
+orada da var, ve izdüşürülmüş tensör hidrostatik yönde tekil olduğu için
+Cholesky her zaman patlar.
+
+**Ölçütü tutup yalnızca yeniden adlandırmak** (`check_tangent_pd`).
+Reddedildi: dürüst olurdu ama kullanıcı anlamlı bir kararlılık
+kontrolünden yoksun kalırdı.
+
+**Doğrudan kuvvetli eliptikliğe geçmek.** Ertelendi: yukarıya bakınız.
 
 ## Kaynaklar
 
@@ -195,6 +337,8 @@ iyileştirme olur.
   Drucker koşulunun aşırı kısıtlayıcılığı
 - Marsden & Hughes, *Mathematical Foundations of Elasticity*, böl. 6 —
   kuvvetli eliptiklik ve polikonvekslik
-- Ogden, *Non-Linear Elastic Deformations*, §6.2 — akustik tensör ve
-  yerel kararlılık
+- Ball, J. M. (1976), "Convexity conditions and existence theorems in
+  nonlinear elasticity", *Arch. Ration. Mech. Anal.* **63**, 337–403 —
+  polikonvekslik
+- Ogden, *Non-Linear Elastic Deformations*, §6.2 — akustik tensör
 - Bonet & Wood (2008), böl. 6 — hacimsel/izokorik ayrışmalı tanjant

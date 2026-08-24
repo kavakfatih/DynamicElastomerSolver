@@ -60,33 +60,36 @@ larger than one tenth of the shortest Prony time constant.\
 """
 
 # ===========================================================================
-# Stability check status codes
+# Stability scan status codes
 #
-# NOTE: the meaning of these codes is under review. The current criterion
-# is positive definiteness of the material tangent (Drucker), which is
-# lost as soon as J departs from unity in nearly incompressible materials.
-# Measurements and the open decision: docs/adr/0007-kararlilik-kriteri.md
+# Criterion: in the uniaxial, equibiaxial and planar modes the derivative
+# of nominal stress with respect to stretch must be positive
+# (dP/dlambda > 0). NOT positive definiteness of the full tangent: a
+# healthy Neo-Hookean does not satisfy that. See
+# docs/adr/0007-kararlilik-kriteri.md
 # ===========================================================================
 
 [DES_STAB_OK]
-message = "Material tangent is positive definite"
+message = "Material is stable in every scanned mode"
 suggestion = "No action required."
 
 [DES_STAB_UNSTABLE]
-message = "Material tangent is not positive definite"
+message = "Nominal stress decreases with stretch (dP/dlambda <= 0)"
 suggestion = """
-Check the material parameters: negative or inconsistent coefficients (a \
-negative C10, for instance) produce this result. If the parameters are \
-correct, this warning most likely stems from volume change and is NOT a \
-genuine material instability -- see docs/adr/0007-kararlilik-kriteri.md.\
+The material is unstable in the reported mode and stretch: it carries \
+less force the further it is stretched. This is the typical sign of a \
+calibration extrapolated beyond the range covered by the test data. \
+Refit the coefficients, or restrict the analysis to the stretch range \
+where the material stays stable. An inconsistent coefficient such as a \
+negative C10 also produces this result.\
 """
 
 [DES_STAB_UNKNOWN]
 message = "Stability could not be determined"
 suggestion = """
-The tangent could not be evaluated, so no stability decision was possible. \
-Inspect the material evaluation status code first; the real problem is \
-there.\
+No decision was possible because the lateral stretch could not be solved \
+or the material evaluation failed. Inspect the material evaluation status \
+code first; the real problem is there.\
 """
 
 # ===========================================================================

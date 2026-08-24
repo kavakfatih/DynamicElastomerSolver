@@ -12,5 +12,18 @@
     "yzhang.markdown-all-in-one"
   ],
 
-  "unwantedRecommendations": []
+  "//unwanted": [
+    "Bu depoda .sln YOKTUR ve olmayacaktir -- CMake istendiginde uretir,",
+    "bkz. docs/TOOLCHAIN.md. C#/.NET eklentileri 'No solution file in the",
+    "workspace' uyarisi uretir; bu uyari Fortran'la ilgisizdir.",
+    "NOT: VS Code bu listeyi yalnizca ONERI olarak kullanir -- zaten kurulu",
+    "bir eklentiyi kendiliginden kapatmaz. Elle: Extensions -> disli ->",
+    "Disable (Workspace)."
+  ],
+
+  "unwantedRecommendations": [
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.vscode-dotnet-runtime"
+  ]
 }

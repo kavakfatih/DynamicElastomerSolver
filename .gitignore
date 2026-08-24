@@ -21,6 +21,16 @@ _build/
 # fpm
 _deps/
 
+# Visual Studio proje dosyalari -- COMMIT EDILMEZ.
+# CMake bunlari istendiginde uretir (bkz. docs/TOOLCHAIN.md). Elle tutulan
+# bir .sln, CMakeLists.txt'den ayrisir ve ikinci bir dogruluk kaynagi olur.
+*.sln
+*.vcxproj
+*.vcxproj.*
+*.vfproj
+.vs/
+build-vs/
+
 # Editor / IDE
 .DS_Store
 *.swp

@@ -1,0 +1,170 @@
+# DES/26 surum yayinlama
+#
+# v* tag'i push edilince Windows ve macOS-arm64 uzerinde Release build alir
+# ve artefaktlari GitHub Release'e yukler.
+#
+# macOS artefakti macOS runner'da URETILIR -- capraz derleme YOK. Bir
+# Apple Silicon ikilisini Linux'ta uretmek teknik olarak mumkun ama
+# dogrulanmasi mumkun degil: test edilmemis bir ikili gondermek,
+# gondermemekten kotudur.
+#
+# Simdilik yalnizca ikili dosya. Imzalama (code signing) ve notarization
+# v0.6'da, Qt arayuzuyle birlikte.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Elle calistirma icin tag adi (or. v0.1.0)'
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+
+  # =========================================================================
+  # Artefakt uretimi
+  # =========================================================================
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+          - os: macos-14
+            name: macos-arm64
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fortran derleyicisini kur
+        uses: fortran-lang/setup-fortran@v1
+        id: setup-fortran
+        with:
+          compiler: gcc
+          version: 13
+
+      # Ninja zorunlu: Windows'ta CMake varsayilan olarak Visual Studio
+      # ureticisini secer ve VS uretici Fortran'i desteklemez.
+      # Bkz. docs/TOOLCHAIN.md
+      - name: Ninja kur
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS)   brew list ninja >/dev/null 2>&1 || brew install ninja ;;
+            Windows) choco install ninja -y ;;
+          esac
+          ninja --version
+
+      - name: Yapilandir ve derle
+        shell: bash
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_Fortran_COMPILER="${{ steps.setup-fortran.outputs.fc }}"
+          cmake --build build --parallel
+
+      # Artefakt gonderilmeden ONCE test edilir. Gecmeyen bir yapi
+      # yayinlanmaz.
+      - name: Test
+        shell: bash
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Artefakti paketle
+        shell: bash
+        run: |
+          OUT="des26-${{ matrix.name }}"
+          mkdir -p "$OUT"
+
+          # Ikililer (Windows'ta .exe uzantili)
+          for f in des26 check_material_tangent check_uniaxial check_stability check_contract; do
+            if   [ -f "build/$f" ];     then cp "build/$f"     "$OUT/"
+            elif [ -f "build/$f.exe" ]; then cp "build/$f.exe" "$OUT/"
+            fi
+          done
+
+          # Kutuphane
+          cp build/libdes_core.a "$OUT/" 2>/dev/null || true
+
+          # Fortran modul arayuzleri -- kutuphaneye baglanmak icin gerekli
+          mkdir -p "$OUT/mod"
+          cp build/mod/*.mod "$OUT/mod/" 2>/dev/null || true
+
+          # Lisans ve bildirimler HER ZAMAN artefaktin icinde olur:
+          # BUSL, lisansin her kopyada gorunur bicimde tasinmasini ister.
+          cp LICENSE NOTICE LISANS.tr.md THIRD_PARTY.md README.md "$OUT/"
+
+          tar -czf "$OUT.tar.gz" "$OUT"
+          ls -la "$OUT.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: des26-${{ matrix.name }}
+          path: des26-${{ matrix.name }}.tar.gz
+          retention-days: 7
+
+  # =========================================================================
+  # GitHub Release'e yukleme
+  # =========================================================================
+  release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artefaktlar
+          merge-multiple: true
+
+      - name: Ne yuklenecek
+        run: ls -la artefaktlar/
+
+      - name: Release olustur
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          files: artefaktlar/*.tar.gz
+          body: |
+            ## DES/26 ${{ github.event.inputs.tag || github.ref_name }}
+
+            Ayrintili degisiklik listesi: [CHANGELOG.md](CHANGELOG.md)
+
+            ### Artefaktlar
+
+            - `des26-windows-x64.tar.gz`
+            - `des26-macos-arm64.tar.gz`
+
+            Her artefakt Release yapilandirmasinda derlenmis, `ctest`
+            gecmis ikilileri, statik kutuphaneyi, Fortran modul
+            arayuzlerini ve lisans dosyalarini icerir.
+
+            ### Bilinen sinirlar
+
+            - Ikililer **imzalanmamis** ve notarize **edilmemistir**.
+              macOS'ta Gatekeeper uyarisi verecektir; imzalama v0.6'da.
+            - Linux artefakti yayinlanmaz: hedef platformlar Windows ve
+              macOS'tur.
+
+            ### Lisans
+
+            Business Source License 1.1. Degisim Tarihi 2030-01-01,
+            Degisim Lisansi Apache License 2.0. Ayrinti: `LICENSE`.

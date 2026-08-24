@@ -283,13 +283,24 @@ $K/\mu = 10^6$'da çift hassasiyetin yaklaşık altı basamağı bu orana gider.
 Bu, karışık u-p formülasyonunun tercih edilmesinin ikinci sebebidir:
 basıncı bağımsız bir alan yapmak, penaltıyı ortadan kaldırır.
 
-### Kararlılık kontrolüne etkisi
+### Tanjant pozitif tanımlılığı neden kararlılık ölçütü olamaz
 
-Penaltı terimi, Drucker kararlılık kontrolünü de bozar: $J > 1$ olduğunda
+Penaltı terimi tanjantın pozitif tanımlılığını bozar: $J > 1$ olduğunda
 $\mathbb{C}_{\text{vol}}$ içindeki $-2KJ(J-1)\mathbb{I}_C$ terimi kayma
-bileşenlerini negatif yapar ve tanjant pozitif tanımlılığını yitirir.
-Bu, ölçülmüş ve belgelenmiştir:
-[ADR 0007](../adr/0007-kararlilik-kriteri.md).
+bileşenlerini negatif yapar. $F = \mathrm{diag}(1.40, 0.85, 0.85)$,
+$C_{10} = +0.6$, $K = 10^3$ için ölçülen:
+$d\mathbf{C}:\mathbb{C}:d\mathbf{C} = -3.9389\times 10^1$.
+
+Bu yalnızca penaltının bir yan etkisi de değildir: penaltı tamamen
+kaldırıldığında ($K \to 0$, saf izokorik) bile $\mathbb{C}_{1111}$
+bileşeni $\lambda \approx 1.58$'den sonra negatife geçer. Sebep, serbest
+enerjinin $\mathbf{C}$ uzayında **konveks olmaması**dır; Neo-Hookean
+polikonvekstir ve konvekslik sonlu şekil değiştirmede zaten istenmeyen bir
+şarttır.
+
+Bu nedenle DES/26 kararlılığı tanjant pozitif tanımlılığıyla ölçmez;
+**mod bazlı monotonluk** ($dP/d\lambda > 0$) kullanır. Ölçümler, karşı
+örnek ve karar: [ADR 0007](../adr/0007-kararlilik-kriteri.md).
 
 ---
 
@@ -303,6 +314,8 @@ Bu, ölçülmüş ve belgelenmiştir:
 | VER-001 | $\sigma_{22} = 0$ artığı | — | 1e-14 | 8.52e-17 | **GEÇTİ** |
 | VER-002 | $\mathbb{C}$ vs merkezi fark | Sonlu fark, $h = 10^{-6}$ | 1e-8 | 1.87e-11 … 1.04e-10 | **GEÇTİ** |
 | VER-002 | Major simetri | — | 1e-12 | 0.0 … 1.48e-16 | **GEÇTİ** |
+| VER-031 | $dP/d\lambda$, üç mod | Bağımsız referans tablosu | 2e-5 mutlak | ≤ 4.3e-06 | **GEÇTİ** |
+| VER-031 | $dP/d\lambda(1) = E$ | Analitik | 1e-6 | 3.16e-08 | **GEÇTİ** |
 
 VER-002, altı belirlenimci deformasyon gradyanında (çekme, basma, saf
 kayma, $\lambda = 3$, birleşik kayma+uzama, hacimsel) ve iki
