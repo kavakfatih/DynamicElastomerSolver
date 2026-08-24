@@ -137,12 +137,33 @@ tanımlılık anlamında pratikte hiçbir yerde ($\lambda > 1$) sağlanmaz.**
 1.58 yalnızca tek bir bileşenin işaret değiştirdiği yerdir; ölçütle ilgisi
 yoktur.
 
-### UYARI: bütün köşegenler pozitifken matris INDEFINITE olabilir
+### UYARI: KÖŞEGEN BAZ-BAĞIMLIDIR, POZİTİF TANIMLILIK DEĞİLDİR
 
 Bu tablodan **"min köşegen > 0 ise kararlı"** diye bir ölçüt çıkarmak
-sessizce yanlıştır, ve burada tam o durum vardır.
+sessizce yanlıştır. İki ayrı sebepten.
 
-$\lambda = 1.40$'ta Mandel matrisinin **altı köşegeni de pozitiftir**:
+**Birinci sebep: köşegen keyfîdir.** Aynı tensörün Mandel köşegeni,
+seçilen ortonormal baza göre DEĞİŞİR; özdeğerleri değişmez. $\lambda =
+1.60$'ta aynı tensör, iki farklı ortonormal bazda:
+
+```
+  standart Mandel/Kelvin bazi : [-0.0049, 7.8438, 7.8438, 7.8029, 1.9050, 1.9050]
+  hidrostatik yon ilk sirada  : [ 3.9782, 4.8770, 6.8276, 1.9050, 7.8029, 1.9050]
+  ozdegerler (HER IKISI ICIN) : [-0.2308, 1.9050, 1.9050, 7.8029, 7.8029, 8.1107]
+```
+
+Birinci bazda bir köşegen negatif, ikincisinde **altısı da pozitif** —
+ama tensör aynı tensör. Dolayısıyla köşegene bakan bir ölçüt, ölçütün
+kendisini keyfî bir baz seçimine bağlar. Özdeğerler baz değişimi altında
+değişmez; kararlılık kararı ancak onlara bakabilir.
+
+(Bu depodaki ölçümler standart Mandel/Kelvin bazındadır. Kayma
+sıralaması burada 4:(1,2), 5:(2,3), 6:(1,3)'tür; yukarıdaki ilk satırda
+kayma girdileri farklı sırada listelenmiştir, küme aynıdır.)
+
+**İkinci sebep: bütün köşegenler pozitifken bile matris indefinite
+olabilir.** Standart bazda $\lambda = 1.40$'ta altı köşegen de
+pozitiftir:
 
 ```
   M(1,1) = +1.245513e-01      M(4,4) = +1.936327e+00
@@ -158,9 +179,14 @@ Yine de özdeğerler:
 ```
 
 En küçüğü **negatif**. Köşegen pozitifliği, pozitif tanımlılığın ne
-gerek ne de yeter şartıdır; bir matrisin köşegenine bakarak kararlılık
-kararı verilemez. (Bu tabloda $\mathbb{C}_{1111}$ ile min köşegen aynı
-sütun çıkıyor — bu bir tesadüftür, kural değildir.)
+gerek ne de yeter şartıdır.
+
+**Tablodaki sütun çakışması tesadüf değildir.** Standart Mandel/Kelvin
+bazında birinci baz tensörü $E_1 = \mathbf{e}_1\otimes\mathbf{e}_1$
+olduğu için $M_{11} = \mathbb{C}_{1111}$ **tanım gereğidir**. Yukarıdaki
+tabloda min köşegenin her satırda $\mathbb{C}_{1111}$'e eşit çıkması,
+bu tanımın ve bu deformasyon ailesinde $M_{11}$'in en küçük köşegen
+olmasının birlikte sonucudur — başka bir bazda ikisi de değişir.
 
 Yani sorun yalnızca penaltı formülasyonunun bir yan etkisi değildir; ölçüt
 karışık u-p formülasyonuna (v0.3) geçildiğinde de yanlış kalırdı.
