@@ -11,6 +11,30 @@ Sürümlerde **tarih yoktur**. Bir sürüm, kapısındaki koşullar sağlandığ
 
 ## [Yayımlanmadı]
 
+### Eklendi (v0.0.2 yolunda)
+
+- **Eksenel simetrik Q4 elemanı** (`src/des_elem_axi_q4.f90`) — ADR-0009
+  sözleşmesinin ilk gerçek uygulaması. Toplam Lagrange, bilineer şekil
+  fonksiyonları, 2x2 Gauss. `DES_FORM_FULL` ve `DES_FORM_FBAR`;
+  `mixed_up` / `bbar` / `srI` sözleşmede var ama gövdeleri v0.3'te
+  (`DES_ELEM_UNSUPPORTED` döner).
+  - **F-bar varyasyonel olarak tutarlıdır**: iç kuvvet
+    `W(u) = ∫ Ψ(F_bar(u)) dV`'nin tam türevi, tanjant tam ikinci
+    türevidir. Sonuç: tanjant **simetriktir** (ölçülen major simetri
+    2.64e-16). de Souza Neto'nun klasik varyantı simetrik olmayan tanjant
+    verir; simetri hem doğrusal çözücü sözleşmesini korur hem sınanabilir
+    kılar.
+  - Eksen üzerindeki düğümlerde `F_tt = 1 + u_r/R` L'Hôpital ile
+    `F_tt → F_rr` olur. Bu dal 2x2 Gauss'ta hiç tetiklenmez (en yakın
+    noktanın yarıçapı 0.2113h); dejenere elemanlar için güvencedir.
+  - `gauss_state()` — sözleşme dışı tanı yordamı. **ADR-0009'da gerçek
+    bir boşluk**: eleman sözleşmesinde gerilme çıktısı alacak yordam yok.
+    Son işlem (post-processing) yazılırken ADR revizyonu gerekecek.
+- **VER-032** — eleman doğrulaması (`test/check_elem_axi_q4.f90`), 49
+  kontrol. Tanjant sonlu farka karşı 1.78e-10 (full) ve 4.96e-10 (fbar);
+  homojen deformasyonda üç analitik referans 1e-14 bağıl içinde; eksenel
+  öteleme tam sıfır iç kuvvet.
+
 ### Değişti
 
 - **Kararlılık ölçütü değişti** ([ADR 0007](docs/adr/0007-kararlilik-kriteri.md)).

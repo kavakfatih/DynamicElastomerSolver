@@ -59,9 +59,9 @@ bulunur; tolerans gerçekten yanlışsa, gerekçesi bu belgede güncellenir.
 
 | Durum | Sayı |
 |---|---|
-| **GEÇTİ** | 3 |
+| **GEÇTİ** | 4 |
 | Planlandı | 28 |
-| **Toplam** | 31 |
+| **Toplam** | 32 |
 
 ---
 
@@ -389,6 +389,83 @@ kararsızlık λ_min'de raporlanıyor.
 **Uygulama:** `test/check_stability.f90` · **Ölçüt:**
 [ADR 0007](../adr/0007-kararlilik-kriteri.md)
 
+### VER-032 — Eksenel simetrik Q4 elemanı · **GEÇTİ**
+
+ADR-0009 eleman sözleşmesinin ilk gerçek uygulaması. **Yama testi (patch
+test) burada YOKTUR** — o, çözücü gerektirir ve VER-010 olarak v0.1'de
+gelecektir. Buradaki kontroller eleman düzeyindedir.
+
+**E1 — Tanjant, artığın sonlu farkına karşı.** Bu, malzeme tanjant
+kontrolünün (VER-002) eleman karşılığıdır ve elemanın çıkış kapısıdır.
+
+| Formülasyon | Tolerans | Ölçülen |
+|---|---|---|
+| `full` — K_uu vs merkezi fark | 1e-8 | **1.7762e-10** |
+| `full` — major simetri | 1e-10 | **1.3026e-16** |
+| `fbar` — K_uu vs merkezi fark | 1e-8 | **4.9578e-10** |
+| `fbar` — major simetri | 1e-10 | **2.6400e-16** |
+| eksen elemanı `fbar` — K_uu vs fark | 1e-8 | **9.3378e-11** |
+
+*Gerekçe:* yuvarlama tabanı. Merkezi farkta ($h = 10^{-6}$) erişilebilir
+en iyi bağıl hata $O(\epsilon/h) \approx 10^{-10}$'dur; tolerans iki
+mertebe pay bırakır. Yer değiştirme alanı bilinçli olarak HOMOJEN
+DEĞİLDİR — homojen bir alanda F-bar'ın ek tanjant terimi kaybolur ve
+sınanmamış olurdu.
+
+**E2 — Homojen deformasyon, analitik referans.** $C_{10} = 0.6$,
+$K = 10^5$, bileşen sırası $(r, z, \theta)$. Gerilme **elemandan**
+alınır, malzemeden doğrudan değil; aksi hâlde test elemanın kinematiğini
+sınamazdı.
+
+| Vaka | Referans | Ölçülen | Bağıl fark |
+|---|---|---|---|
+| (a) $F = \mathrm{diag}(1.1,1.1,1.1)$, $\sigma_{rr}$ | 33100.000000000 | 33100.000000000 | 1.10e-15 |
+| (a) izotropiden sapma | 0 | 0 | **tam 0** |
+| (b) $F = \mathrm{diag}(1.2,1.0,1.2)$, $\sigma_{rr}$ | 44000.095846262 | 44000.095846262 | 4.46e-15 |
+| (b) $\sigma_{zz}$ | 43999.808307476 | 43999.808307476 | 9.26e-15 |
+| (b) $\sigma_{rr} = \sigma_{tt}$ | — | — | **tam 0** |
+| (c) izokorik, $\lambda_z = 1.5$, $\sigma_{zz}$ | 1.266666667 | 1.266666667 | 3.51e-16 |
+| (c) $\sigma_{zz} - \sigma_{rr}$ | 1.900000000 | 1.900000000 | 2.34e-16 |
+
+Ayrıca dört Gauss noktasının **tam olarak aynı** $F$'yi görmesi
+denetlenir: max$|\Delta F| \le 2.8\times10^{-17}$.
+
+*Gerekçe:* homojen deformasyonda **ayrıklaştırma hatası yoktur**; sapma
+varsa kinematik yanlıştır. Kalan tek kaynak yuvarlamadır, tolerans 1e-9.
+
+(c) vakası **VER-001 ile çapraz doğrulamadır**: $\sigma_{zz} -
+\sigma_{rr} = 2C_{10}(\lambda^2 - 1/\lambda)$ ifadesinin
+$\lambda = 1.5$'teki değeri olan 1.9'a birebir eşittir.
+
+**E3 — Rijit cisim hareketi.** Eksenel öteleme: max$|f_{int}| =$ **tam
+0.0**.
+
+> **Spesifikasyon düzeltmesi.** Eksenel simetride, burulma serbestliği
+> olmadan, **tek rijit cisim hareketi eksenel ötelemedir**. r-z
+> düzlemindeki dönme rijit DEĞİLDİR: $u_r$ yarıçapa göre değişir,
+> dolayısıyla $F_{tt} = 1 + u_r/R \neq 1$ olur. z ekseni etrafındaki
+> dönme gerçek rijit harekettir ama yer değiştirmesi $u_\theta$'dadır ve
+> bu eleman onu taşımaz (v0.2). Test bunu kayıt altına alır: r-z dönmesi
+> max$|f_{int}| = 2.19\times10^3$ üretir ve bu **doğrudur**.
+
+**E4 — Eksen üzerindeki düğüm.** $R = 0$'a dokunan elemanda düzgün
+genişleme: $\sigma_{rr} = $ 33100.000000000, NaN yok, tanjant 9.34e-11.
+
+$F_{tt} = 1 + u_r/R$ eksende belirsizdir; L'Hôpital ile
+$F_{tt} \to F_{rr}$ alınır. **Bu dal 2x2 Gauss'ta hiç tetiklenmez**:
+ekseni kenarıyla kesen bir elemanda en yakın integrasyon noktasının
+yarıçapı $0.2113h$'dir. Dal dejenere elemanlar için bir güvencedir.
+
+**E5 — `quality()`.** Bozulmamış kare: `jacobian_ratio` = 1,
+`aspect_ratio` = 1, açılar 90°, `worst` = 1, `inverted` = false — hepsi
+tam. Katlanmış eleman: `inverted` = true, `worst` = 0. Referans
+konfigürasyonda ters düğüm sırası `setup` tarafından reddedilir
+(`DES_ELEM_BAD_ARG`) — bir ağ hatasıdır ve erken yakalanır.
+
+**Uygulama:** `test/check_elem_axi_q4.f90` · **Eleman:**
+`src/des_elem_axi_q4.f90` · **Sözleşme:**
+[ADR 0009](../adr/0009-eleman-sozlesmesi.md)
+
 ---
 
 ## Sürümlere göre dağılım
@@ -396,6 +473,7 @@ kararsızlık λ_min'de raporlanıyor.
 | Sürüm | Problemler | Sayı |
 |---|---|---|
 | v0.0.1 | VER-001, 002, 031 | 3 · **GEÇTİ** |
+| v0.0.2 | VER-032 | 1 · **GEÇTİ** |
 | v0.1 | VER-010, 011, 014, 017, 018, 019, 024 | 7 |
 | v0.2 | VER-012, 027 | 2 |
 | v0.3 | VER-013, 015, 016, 020, 021, 025, 026, 028 | 8 |
