@@ -82,7 +82,11 @@ add_library(des_core STATIC
     src/des_mesh.f90
     src/des_sparse.f90
     src/des_element.f90
-    src/des_elem_axi_q4.f90)
+    src/des_elem_axi_q4.f90
+    src/des_linsolve.f90
+    src/des_bc.f90
+    src/des_assemble.f90
+    src/des_newton.f90)
 
 target_link_libraries(des_core PUBLIC des_flags)
 target_include_directories(des_core PUBLIC "${CMAKE_Fortran_MODULE_DIRECTORY}")
@@ -112,3 +116,4 @@ des_add_test(check_stability)
 des_add_test(check_contract)
 des_add_test(check_element_contract)
 des_add_test(check_elem_axi_q4)
+des_add_test(check_patch)

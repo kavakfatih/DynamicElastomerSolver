@@ -30,24 +30,39 @@
 !> (N_a/R) * R = N_a olur. Tanjantta sadeleşmez ve gerçek bir 1/R kalır;
 !> yukarıdaki gerekçeyle Gauss noktalarında sonludur.
 !>
-!> F-BAR
+!> F-BAR -- ORTALAMA GENLESME (mean dilatation) BICIMI
 !>
-!> Hacimsel kısım eleman merkezinden alınır:
+!>    F_bar = theta * F,   theta = (J_bar/J)^(1/3)
+!>    J_bar = (1/V) * integral J dV0        (ELEMAN ORTALAMASI)
 !>
-!>    F_bar = theta * F,   theta = (J_0/J)^(1/3),   J_0 = det F(merkez)
+!> Buradan det F_bar = J_bar çıkar: hacim cevabı eleman ortalamasından,
+!> şekil cevabı Gauss noktasından gelir -- kilitlenme (locking) çaresi
+!> tam olarak budur.
 !>
-!> Buradan det F_bar = J_0 çıkar: hacim cevabı merkezden, şekil cevabı
-!> Gauss noktasından gelir -- kilitlenme (locking) çaresi tam olarak budur.
+!> NEDEN MERKEZ DEĞİL, ORTALAMA
+!>
+!> J_bar yerine merkezdeki J_0 alınırsa ve formülasyon varyasyonel
+!> tutulursa (yani iç kuvvet W = integral Psi(F_bar(u)) dV'nin tam türevi
+!> olursa) YAMA TESTİ GEÇİLEMEZ. Homojen bir durumda artık şuna iner:
+!>
+!>    f_a = 0 - (p/3) integral (g:dF_a) dV + (p/3) V (g0 : dF0_a)
+!>
+!> Son iki terim ancak  integral dF_a dV = V * dF_a(merkez)  ise
+!> sadeleşir; bu eşitlik ÇARPIK bir elemanda sağlanmaz. Ölçüldü: çarpık
+!> dört elemanlı yamada iç düğüm artığı (-185.8, +829.0) çıkıyor.
+!>
+!> J_bar eleman ortalaması alındığında dJ_bar tanım gereği dF'in eleman
+!> ortalamasını içerir ve iki terim TAM sadeleşir. Bu, Nagtegaal-Parks-
+!> Rice ve Simo-Taylor-Pister'in ortalama genleşme yöntemidir.
 !>
 !> BU UYGULAMA VARYASYONEL OLARAK TUTARLIDIR. İç kuvvet, enerjinin
 !> W(u) = integral Psi(F_bar(u)) dV fonksiyonelinin TAM türevidir;
 !> tanjant da tam ikinci türevidir. Sonuç: tanjant SİMETRİKTİR.
 !>
 !> de Souza Neto'nun klasik F-bar'ı gerilmeyi F_bar'dan alıp artığı F ile
-!> kurar; o varyant simetrik olmayan bir tanjant üretir. Burada bilinçli
-!> olarak varyasyonel varyant seçildi: hiperelastisitede tanjantın
-!> simetrik kalması hem doğrusal çözücü sözleşmesini (simetrik indefinite)
-!> korur hem de VER-032'de major simetri sınanabilir hâle gelir.
+!> kurar; o varyant yama testini geçer ama simetrik OLMAYAN bir tanjant
+!> üretir ve simetrik doğrusal çözücü sözleşmesini kırar. Ortalama
+!> genleşme her ikisini birden verir: yama testi VE simetri.
 !>
 !> Bu oturumda YALNIZCA DES_FORM_FULL ve DES_FORM_FBAR uygulanmıştır.
 !> mixed_up, bbar ve srI sözleşmede vardır ama gövdeleri v0.3'tedir;
@@ -181,8 +196,23 @@ contains
 
       ok = .true.
       inv = 1.0_dp/detj
-      dNdR = (j22*dNdxi - j21*dNdeta)*inv
-      dNdZ = (-j12*dNdxi + j11*dNdeta)*inv
+
+      !> Jacobian tersi. J = [[dR/dxi, dZ/dxi], [dR/deta, dZ/deta]] ve
+      !>
+      !>   [dN/dxi ]   [ j11  j12 ] [dN/dR]
+      !>   [dN/deta] = [ j21  j22 ] [dN/dZ]
+      !>
+      !> olduğundan tersi
+      !>
+      !>   dN/dR = ( j22*dN/dxi - j12*dN/deta) / det
+      !>   dN/dZ = (-j21*dN/dxi + j11*dN/deta) / det
+      !>
+      !> DİKKAT: j12 ile j21 yer değiştirirse DİKDÖRTGEN elemanda hiçbir
+      !> şey olmaz (ikisi de sıfırdır) ama ÇARPIK elemanda kinematik
+      !> sessizce yanlış çıkar. Bu hata bir kez yapıldı ve yalnızca
+      !> VER-033 yama testi (çarpık ağ) yakaladı.
+      dNdR = (j22*dNdxi - j12*dNdeta)*inv
+      dNdZ = (-j21*dNdxi + j11*dNdeta)*inv
    end subroutine cart_derivs
 
    ! =========================================================================
@@ -193,8 +223,11 @@ contains
    !>
    !> `hoop(a)` = dF_tt/du_ra. Eksen dışında N_a/R, eksende L'Hôpital ile
    !> dN_a/dR olur.
+   !> `u` bilincli olarak varsayilan-sekilli (assumed shape): cagiranlar
+   !> daha buyuk bir tampondan dilim geciriyor; acik sekilli bir kukla
+   !> argüman her cagrida gecici bir kopya urettirirdi.
    pure subroutine kinematics(u, N, dNdR, dNdZ, Rg, r_scale, F, hoop, on_axis)
-      real(dp), intent(in) :: u(NDOF, NNOD)
+      real(dp), intent(in) :: u(:, :)
       real(dp), intent(in) :: N(NNOD), dNdR(NNOD), dNdZ(NNOD)
       real(dp), intent(in) :: Rg, r_scale
       real(dp), intent(out) :: F(3, 3)
@@ -313,28 +346,91 @@ contains
       n = int(size(this%XR), ip)
    end function q4_n_node
 
-   !> Merkez (ksi = eta = 0) kinematiği -- F-bar için.
-   subroutine centroid_state(this, u, F0, J0, hoop0, dNdR0, dNdZ0, ok)
+   !> ------------------------------------------------------------------------
+   !> BİRİNCİ GEÇİŞ: bütün Gauss noktalarının kinematiği ve J_bar
+   !>
+   !> theta her noktada J_bar'a bağlıdır, J_bar ise bütün noktalara --
+   !> bu yüzden iki geçiş zorunludur. Merkez tabanlı biçimde tek geçiş
+   !> yeterdi; ortalama genleşmenin bedeli budur.
+   !> ------------------------------------------------------------------------
+   subroutine element_kinematics(this, u, Fs, gs, Js, ws, dRs, dZs, hps, &
+                                 vtot, jbar, ok)
       class(elem_axi_q4_t), intent(in) :: this
-      real(dp), intent(in) :: u(NDOF, NNOD)
-      real(dp), intent(out) :: F0(3, 3)
-      real(dp), intent(out) :: J0
-      real(dp), intent(out) :: hoop0(NNOD), dNdR0(NNOD), dNdZ0(NNOD)
+      real(dp), intent(in) :: u(:, :)
+      real(dp), intent(out) :: Fs(3, 3, NGP), gs(3, 3, NGP)
+      real(dp), intent(out) :: Js(NGP), ws(NGP)
+      real(dp), intent(out) :: dRs(NNOD, NGP), dZs(NNOD, NGP), hps(NNOD, NGP)
+      real(dp), intent(out) :: vtot, jbar
       logical, intent(out) :: ok
 
-      real(dp) :: N0(NNOD), detj0, R0
+      real(dp) :: N(NNOD), detj, xi, eta, w, Rg, Finv(3, 3), jv
+      integer(ip) :: g
       logical :: on_axis
 
-      J0 = 0.0_dp
-      call cart_derivs(this%XR, this%XZ, 0.0_dp, 0.0_dp, N0, dNdR0, dNdZ0, &
-                       detj0, ok)
-      if (.not. ok) return
+      Fs = 0.0_dp; gs = 0.0_dp; Js = 0.0_dp; ws = 0.0_dp
+      dRs = 0.0_dp; dZs = 0.0_dp; hps = 0.0_dp
+      vtot = 0.0_dp; jbar = 0.0_dp; jv = 0.0_dp
+      ok = .false.
 
-      R0 = dot_product(N0, this%XR)
-      call kinematics(u, N0, dNdR0, dNdZ0, R0, this%r_scale, F0, hoop0, on_axis)
-      J0 = det3(F0)
-      ok = (J0 > 0.0_dp)
-   end subroutine centroid_state
+      do g = 1_ip, NGP
+         call gauss_2x2(g, xi, eta, w)
+         call cart_derivs(this%XR, this%XZ, xi, eta, N, dRs(:, g), dZs(:, g), &
+                          detj, ok)
+         if (.not. ok) return
+
+         Rg = dot_product(N, this%XR)
+         call kinematics(u, N, dRs(:, g), dZs(:, g), Rg, this%r_scale, &
+                         Fs(:, :, g), hps(:, g), on_axis)
+
+         Js(g) = det3(Fs(:, :, g))
+         if (Js(g) <= 0.0_dp) then
+            ok = .false.
+            return
+         end if
+
+         call inv3(Fs(:, :, g), Js(g), Finv, ok)
+         if (.not. ok) return
+         gs(:, :, g) = transpose(Finv)
+
+         ws(g) = Rg*detj*w
+         vtot = vtot + ws(g)
+         jv = jv + ws(g)*Js(g)
+      end do
+
+      if (vtot <= 0.0_dp) then
+         ok = .false.
+         return
+      end if
+      jbar = jv/vtot
+      ok = (jbar > 0.0_dp)
+   end subroutine element_kinematics
+
+   !> dJ_bar / du -- her (düğüm, serbestlik) için.
+   !>
+   !>    dJ_bar_a = (1/V) * sum_g w_g J_g (g_g : dF_a,g)
+   !>
+   !> Yama testinin geçmesini sağlayan terim budur: J_bar eleman
+   !> ortalaması olduğu için bu ifade dF'in ortalamasını taşır.
+   pure subroutine jbar_gradient(gs, Js, ws, dRs, dZs, hps, vtot, qj)
+      real(dp), intent(in) :: gs(3, 3, NGP), Js(NGP), ws(NGP)
+      real(dp), intent(in) :: dRs(NNOD, NGP), dZs(NNOD, NGP), hps(NNOD, NGP)
+      real(dp), intent(in) :: vtot
+      real(dp), intent(out) :: qj(NDOF, NNOD)
+
+      real(dp) :: dF(3, 3)
+      integer(ip) :: g, a, i
+
+      qj = 0.0_dp
+      do g = 1_ip, NGP
+         do a = 1_ip, NNOD
+            do i = 1_ip, NDOF
+               call virtual_F(a, i, dRs(:, g), dZs(:, g), hps(:, g), dF)
+               qj(i, a) = qj(i, a) + ws(g)*Js(g)*sum(gs(:, :, g)*dF)
+            end do
+         end do
+      end do
+      qj = qj/vtot
+   end subroutine jbar_gradient
 
    subroutine q4_residual(this, u, u_global, ctx, state_n, &
                           f_int, f_global, state_np1, stat, dt_factor)
@@ -349,16 +445,16 @@ contains
       integer(ip), intent(out) :: stat
       real(dp), intent(out) :: dt_factor
 
-      real(dp) :: N(NNOD), dNdR(NNOD), dNdZ(NNOD), hoop(NNOD)
-      real(dp) :: dNdR0(NNOD), dNdZ0(NNOD), hoop0(NNOD)
-      real(dp) :: F(3, 3), Fb(3, 3), Cb(3, 3), S(3, 3), CC(3, 3, 3, 3)
-      real(dp) :: P(3, 3), Aeff(3, 3), Finv(3, 3), gg(3, 3), g0(3, 3)
-      real(dp) :: F0(3, 3), F0inv(3, 3), dF(3, 3), dF0(3, 3)
-      real(dp) :: xi, eta, w, detj, Rg, wt, jac, J0, th, pp, beta, beta_acc
-      real(dp) :: dtf
+      real(dp) :: Fs(3, 3, NGP), gs(3, 3, NGP), Js(NGP), ws(NGP)
+      real(dp) :: dRs(NNOD, NGP), dZs(NNOD, NGP), hps(NNOD, NGP)
+      real(dp) :: qj(NDOF, NNOD)
+      real(dp) :: N(NNOD), Fb(3, 3), Cb(3, 3), S(3, 3), CC(3, 3, 3, 3)
+      real(dp) :: P(3, 3), Aeff(3, 3), dF(3, 3)
+      real(dp) :: vtot, jbar, th, pp, bacc, dtf, xi, eta, w, detj, Rg
+      real(dp) :: dum1(NNOD), dum2(NNOD)
       type(mat_point_t) :: pt
       integer(ip) :: g, a, i, mstat
-      logical :: ok, on_axis, fbar
+      logical :: ok, fbar
 
       f_int = 0.0_dp
       f_global = 0.0_dp
@@ -374,43 +470,25 @@ contains
       if (size(state_n) /= NGP .or. size(state_np1) /= NGP) return
 
       fbar = (this%cfg%formulation == DES_FORM_FBAR)
-      beta_acc = 0.0_dp
-      g0 = 0.0_dp
-      dNdR0 = 0.0_dp
-      dNdZ0 = 0.0_dp
-      hoop0 = 0.0_dp
 
-      if (fbar) then
-         call centroid_state(this, u, F0, J0, hoop0, dNdR0, dNdZ0, ok)
-         if (.not. ok) then
-            stat = DES_ELEM_OK
-            call nonphysical(stat, dt_factor)
-            return
-         end if
-         call inv3(F0, det3(F0), F0inv, ok)
-         if (.not. ok) then
-            call nonphysical(stat, dt_factor)
-            return
-         end if
-         g0 = transpose(F0inv)
+      call element_kinematics(this, u, Fs, gs, Js, ws, dRs, dZs, hps, &
+                              vtot, jbar, ok)
+      if (.not. ok) then
+         call nonphysical(stat, dt_factor)
+         return
       end if
+
+      qj = 0.0_dp
+      if (fbar) call jbar_gradient(gs, Js, ws, dRs, dZs, hps, vtot, qj)
+
+      bacc = 0.0_dp
 
       do g = 1_ip, NGP
          call gauss_2x2(g, xi, eta, w)
-         call cart_derivs(this%XR, this%XZ, xi, eta, N, dNdR, dNdZ, detj, ok)
+         call cart_derivs(this%XR, this%XZ, xi, eta, N, dum1, dum2, detj, ok)
          if (.not. ok) return
-
          Rg = dot_product(N, this%XR)
-         call kinematics(u, N, dNdR, dNdZ, Rg, this%r_scale, F, hoop, on_axis)
 
-         jac = det3(F)
-         if (jac <= 0.0_dp) then
-            call nonphysical(stat, dt_factor)
-            return
-         end if
-
-         !> Malzeme noktası bağlamı ELEMANIN İÇİNDE kurulur: yarıçap ve
-         !> sıcaklık şekil fonksiyonlarıyla interpole edilir.
          pt%time = ctx%time
          pt%dt = ctx%dt
          pt%element = this%id
@@ -419,62 +497,41 @@ contains
          pt%temperature = ctx_temperature_at(ctx, N)
 
          if (fbar) then
-            th = (J0/jac)**(1.0_dp/3.0_dp)
-            Fb = th*F
+            th = (jbar/Js(g))**(1.0_dp/3.0_dp)
          else
             th = 1.0_dp
-            Fb = F
          end if
+         Fb = th*Fs(:, :, g)
 
          Cb = matmul(transpose(Fb), Fb)
          call this%mat%eval(Cb, pt, state_n(g), S, CC, state_np1(g), &
                             mstat, dtf)
          if (mstat /= DES_MAT_OK) then
-            stat = DES_ELEM_OK
-            dt_factor = dtf
-            f_int = 0.0_dp
-            if (mstat /= DES_MAT_OK) stat = DES_ELEM_BAD_ARG
             call nonphysical(stat, dt_factor)
             dt_factor = dtf
             return
          end if
 
          P = matmul(Fb, S)
-         wt = Rg*detj*w
 
          if (fbar) then
-            call inv3(F, jac, Finv, ok)
-            if (.not. ok) then
-               call nonphysical(stat, dt_factor)
-               return
-            end if
-            gg = transpose(Finv)
-            pp = sum(P*F)
-            beta = pp*th/3.0_dp
-            Aeff = th*P - beta*gg
-            beta_acc = beta_acc + wt*beta
+            pp = sum(P*Fs(:, :, g))
+            Aeff = th*P - (pp*th/3.0_dp)*gs(:, :, g)
+            bacc = bacc + ws(g)*pp*th/(3.0_dp*jbar)
          else
             Aeff = P
          end if
 
          do a = 1_ip, NNOD
             do i = 1_ip, NDOF
-               call virtual_F(a, i, dNdR, dNdZ, hoop, dF)
-               f_int(i, a) = f_int(i, a) + wt*sum(Aeff*dF)
+               call virtual_F(a, i, dRs(:, g), dZs(:, g), hps(:, g), dF)
+               f_int(i, a) = f_int(i, a) + ws(g)*sum(Aeff*dF)
             end do
          end do
       end do
 
-      !> F-bar'ın merkez terimi: Gauss noktalarından bağımsız olduğu için
-      !> toplanıp bir kez uygulanır.
-      if (fbar) then
-         do a = 1_ip, NNOD
-            do i = 1_ip, NDOF
-               call virtual_F(a, i, dNdR0, dNdZ0, hoop0, dF0)
-               f_int(i, a) = f_int(i, a) + beta_acc*sum(g0*dF0)
-            end do
-         end do
-      end if
+      !> J_bar bağlaşım terimi.
+      if (fbar) f_int = f_int + bacc*qj
 
       stat = DES_ELEM_OK
 
@@ -503,19 +560,19 @@ contains
       real(dp), intent(out) :: K_gg(:, :)
       integer(ip), intent(out) :: stat
 
-      real(dp) :: N(NNOD), dNdR(NNOD), dNdZ(NNOD), hoop(NNOD)
-      real(dp) :: dNdR0(NNOD), dNdZ0(NNOD), hoop0(NNOD)
-      real(dp) :: F(3, 3), Fb(3, 3), Cb(3, 3), S(3, 3), CC(3, 3, 3, 3)
-      real(dp) :: P(3, 3), Finv(3, 3), gg(3, 3), g0(3, 3)
-      real(dp) :: F0(3, 3), F0inv(3, 3)
-      real(dp) :: dF(3, 3), dF0(3, 3), DFg(3, 3), DF0g(3, 3)
-      real(dp) :: DFb(3, 3), DCb(3, 3), DS(3, 3), DPbar(3, 3)
-      real(dp) :: Dgg(3, 3), Dg0(3, 3), DAeff(3, 3), Aeff(3, 3)
-      real(dp) :: xi, eta, w, detj, Rg, wt, jac, J0, th, pp, beta
-      real(dp) :: Dth, Dpp, Dbeta, dtf
+      real(dp) :: Fs(3, 3, NGP), gs(3, 3, NGP), Js(NGP), ws(NGP)
+      real(dp) :: dRs(NNOD, NGP), dZs(NNOD, NGP), hps(NNOD, NGP)
+      real(dp) :: qj(NDOF, NNOD)
+      real(dp) :: Ss(3, 3, NGP), Ps(3, 3, NGP), CCs(3, 3, 3, 3, NGP)
+      real(dp) :: ths(NGP), pps(NGP)
+      real(dp) :: N(NNOD), Fb(3, 3), Cb(3, 3), dum1(NNOD), dum2(NNOD)
+      real(dp) :: dF(3, 3), DFg(3, 3), DFb(3, 3), DCb(3, 3), DS(3, 3)
+      real(dp) :: DPbar(3, 3), Dgg(3, 3), DAeff(3, 3), Finv(3, 3)
+      real(dp) :: vtot, jbar, bacc, dtf, xi, eta, w, detj, Rg
+      real(dp) :: DJbar, Dth, Dpp, DJg, Dbacc, DdJbar, kadd
       type(mat_point_t) :: pt
       integer(ip) :: g, a, i, b, j, row, col, mstat
-      logical :: ok, on_axis, fbar
+      logical :: ok, fbar
 
       K_uu = 0.0_dp
       K_ug = 0.0_dp
@@ -531,31 +588,22 @@ contains
       if (size(state_n) /= NGP) return
 
       fbar = (this%cfg%formulation == DES_FORM_FBAR)
-      F0 = 0.0_dp
-      g0 = 0.0_dp
-      J0 = 1.0_dp
-      dNdR0 = 0.0_dp
-      dNdZ0 = 0.0_dp
-      hoop0 = 0.0_dp
 
-      if (fbar) then
-         call centroid_state(this, u, F0, J0, hoop0, dNdR0, dNdZ0, ok)
-         if (.not. ok) return
-         call inv3(F0, J0, F0inv, ok)
-         if (.not. ok) return
-         g0 = transpose(F0inv)
-      end if
+      call element_kinematics(this, u, Fs, gs, Js, ws, dRs, dZs, hps, &
+                              vtot, jbar, ok)
+      if (.not. ok) return
 
+      qj = 0.0_dp
+      if (fbar) call jbar_gradient(gs, Js, ws, dRs, dZs, hps, vtot, qj)
+
+      !> Birinci geçiş: malzeme değerlendirmeleri saklanır ki sütun
+      !> döngüsünde sekiz kez tekrarlanmasın.
+      bacc = 0.0_dp
       do g = 1_ip, NGP
          call gauss_2x2(g, xi, eta, w)
-         call cart_derivs(this%XR, this%XZ, xi, eta, N, dNdR, dNdZ, detj, ok)
+         call cart_derivs(this%XR, this%XZ, xi, eta, N, dum1, dum2, detj, ok)
          if (.not. ok) return
-
          Rg = dot_product(N, this%XR)
-         call kinematics(u, N, dNdR, dNdZ, Rg, this%r_scale, F, hoop, on_axis)
-
-         jac = det3(F)
-         if (jac <= 0.0_dp) return
 
          pt%time = ctx%time
          pt%dt = ctx%dt
@@ -565,89 +613,101 @@ contains
          pt%temperature = ctx_temperature_at(ctx, N)
 
          if (fbar) then
-            th = (J0/jac)**(1.0_dp/3.0_dp)
-            Fb = th*F
-            call inv3(F, jac, Finv, ok)
-            if (.not. ok) return
-            gg = transpose(Finv)
+            ths(g) = (jbar/Js(g))**(1.0_dp/3.0_dp)
          else
-            th = 1.0_dp
-            Fb = F
-            gg = 0.0_dp
+            ths(g) = 1.0_dp
          end if
+         Fb = ths(g)*Fs(:, :, g)
 
          Cb = matmul(transpose(Fb), Fb)
-         call this%mat%eval(Cb, pt, state_n(g), S, CC, this%scratch(g), &
-                            mstat, dtf)
+         call this%mat%eval(Cb, pt, state_n(g), Ss(:, :, g), CCs(:, :, :, :, g), &
+                            this%scratch(g), mstat, dtf)
          if (mstat /= DES_MAT_OK) return
 
-         P = matmul(Fb, S)
-         wt = Rg*detj*w
+         Ps(:, :, g) = matmul(Fb, Ss(:, :, g))
+         pps(g) = sum(Ps(:, :, g)*Fs(:, :, g))
+         if (fbar) bacc = bacc + ws(g)*pps(g)*ths(g)/(3.0_dp*jbar)
+      end do
 
-         if (fbar) then
-            pp = sum(P*F)
-            beta = pp*th/3.0_dp
-            Aeff = th*P - beta*gg
-         else
-            pp = 0.0_dp
-            beta = 0.0_dp
-            Aeff = P
-         end if
+      !> Sütun sütun tam artım.
+      do b = 1_ip, NNOD
+         do j = 1_ip, NDOF
+            col = (b - 1_ip)*NDOF + j
 
-         !> Sütun sütun: her (b, j) yönü için tam artım.
-         do b = 1_ip, NNOD
-            do j = 1_ip, NDOF
-               col = (b - 1_ip)*NDOF + j
-               call virtual_F(b, j, dNdR, dNdZ, hoop, DFg)
+            DJbar = 0.0_dp
+            if (fbar) DJbar = qj(j, b)
+            Dbacc = 0.0_dp
+
+            do g = 1_ip, NGP
+               call virtual_F(b, j, dRs(:, g), dZs(:, g), hps(:, g), DFg)
 
                if (fbar) then
-                  call virtual_F(b, j, dNdR0, dNdZ0, hoop0, DF0g)
-                  Dth = (th/3.0_dp)*(sum(g0*DF0g) - sum(gg*DFg))
-                  DFb = th*DFg + Dth*F
+                  DJg = Js(g)*sum(gs(:, :, g)*DFg)
+                  Dth = (ths(g)/3.0_dp) &
+                        *(DJbar/jbar - sum(gs(:, :, g)*DFg))
+                  DFb = ths(g)*DFg + Dth*Fs(:, :, g)
                else
-                  DF0g = 0.0_dp
+                  DJg = 0.0_dp
                   Dth = 0.0_dp
                   DFb = DFg
                end if
 
+               Fb = ths(g)*Fs(:, :, g)
                DCb = matmul(transpose(DFb), Fb) + matmul(transpose(Fb), DFb)
-               call contract_cc(CC, DCb, DS)
-               DPbar = matmul(DFb, S) + matmul(Fb, DS)
+               call contract_cc(CCs(:, :, :, :, g), DCb, DS)
+               DPbar = matmul(DFb, Ss(:, :, g)) + matmul(Fb, DS)
 
                if (fbar) then
-                  Dpp = sum(DPbar*F) + sum(P*DFg)
-                  Dbeta = (Dpp*th + pp*Dth)/3.0_dp
+                  Dpp = sum(DPbar*Fs(:, :, g)) + sum(Ps(:, :, g)*DFg)
+                  call inv3(Fs(:, :, g), Js(g), Finv, ok)
+                  if (.not. ok) return
                   call inv_derivative(Finv, DFg, Dgg)
-                  call inv_derivative(F0inv, DF0g, Dg0)
-                  DAeff = th*DPbar + Dth*P - Dbeta*gg - beta*Dgg
+                  DAeff = Dth*Ps(:, :, g) + ths(g)*DPbar &
+                          - ((Dpp*ths(g) + pps(g)*Dth)/3.0_dp)*gs(:, :, g) &
+                          - (pps(g)*ths(g)/3.0_dp)*Dgg
+                  Dbacc = Dbacc + ws(g)*((Dpp*ths(g) + pps(g)*Dth) &
+                                         /(3.0_dp*jbar) &
+                                         - pps(g)*ths(g)*DJbar &
+                                         /(3.0_dp*jbar*jbar))
                else
-                  Dbeta = 0.0_dp
                   Dgg = 0.0_dp
-                  Dg0 = 0.0_dp
                   DAeff = DPbar
                end if
 
                do a = 1_ip, NNOD
                   do i = 1_ip, NDOF
                      row = (a - 1_ip)*NDOF + i
-                     call virtual_F(a, i, dNdR, dNdZ, hoop, dF)
-                     K_uu(row, col) = K_uu(row, col) + wt*sum(DAeff*dF)
+                     call virtual_F(a, i, dRs(:, g), dZs(:, g), hps(:, g), dF)
+                     kadd = ws(g)*sum(DAeff*dF)
 
+                     !> d(dJ_bar_a) bağlaşımı: J_bar hem satırın hem
+                     !> sütunun fonksiyonu olduğu için bu terim çift
+                     !> yönlüdür ve tanjantın simetrik kalmasını sağlar.
                      if (fbar) then
-                        call virtual_F(a, i, dNdR0, dNdZ0, hoop0, dF0)
-                        K_uu(row, col) = K_uu(row, col) &
-                                         + wt*(Dbeta*sum(g0*dF0) &
-                                               + beta*sum(Dg0*dF0))
+                        DdJbar = ws(g)*(DJg*sum(gs(:, :, g)*dF) &
+                                        + Js(g)*sum(Dgg*dF))/vtot
+                        kadd = kadd + bacc*DdJbar
                      end if
+
+                     K_uu(row, col) = K_uu(row, col) + kadd
                   end do
                end do
             end do
+
+            if (fbar) then
+               do a = 1_ip, NNOD
+                  do i = 1_ip, NDOF
+                     row = (a - 1_ip)*NDOF + i
+                     K_uu(row, col) = K_uu(row, col) + Dbacc*qj(i, a)
+                  end do
+               end do
+            end if
          end do
       end do
 
       stat = DES_ELEM_OK
 
-      associate (unused => u_global, unused2 => Aeff)
+      associate (unused => u_global)
       end associate
    end subroutine q4_tangent
 
@@ -807,9 +867,10 @@ contains
       integer(ip), intent(out) :: stat
 
       real(dp) :: N(NNOD), dNdR(NNOD), dNdZ(NNOD), hoop(NNOD)
-      real(dp) :: dNdR0(NNOD), dNdZ0(NNOD), hoop0(NNOD)
-      real(dp) :: F0(3, 3), Fb(3, 3), Cb(3, 3), S(3, 3), CC(3, 3, 3, 3)
-      real(dp) :: xi, eta, w, detj, Rg, jac, J0, th, dtf
+      real(dp) :: Fs(3, 3, NGP), gs(3, 3, NGP), Js(NGP), ws(NGP)
+      real(dp) :: dRs(NNOD, NGP), dZs(NNOD, NGP), hps(NNOD, NGP)
+      real(dp) :: Fb(3, 3), Cb(3, 3), S(3, 3), CC(3, 3, 3, 3)
+      real(dp) :: xi, eta, w, detj, Rg, jac, vtot, jbar, th, dtf
       type(mat_point_t) :: pt
       integer(ip) :: mstat
       logical :: ok, on_axis
@@ -836,9 +897,12 @@ contains
       if (jac <= 0.0_dp) return
 
       if (this%cfg%formulation == DES_FORM_FBAR) then
-         call centroid_state(this, u, F0, J0, hoop0, dNdR0, dNdZ0, ok)
+         !> theta eleman ortalamasi J_bar'a baglidir; butun Gauss
+         !> noktalari gerekir.
+         call element_kinematics(this, u, Fs, gs, Js, ws, dRs, dZs, hps, &
+                                 vtot, jbar, ok)
          if (.not. ok) return
-         th = (J0/jac)**(1.0_dp/3.0_dp)
+         th = (jbar/jac)**(1.0_dp/3.0_dp)
       else
          th = 1.0_dp
       end if

@@ -135,7 +135,17 @@ montaj (assembly) kodunu baştan yazmayı gerektirir.
 kilitlenme (volumetric locking) üretir; hangi çarenin kullanılacağı elemanın
 değil, analizin kararıdır.
 
-### 3. Doğrusal çözücü arayüzü — TASARLANDI (v0.3)
+### 3. Doğrusal çözücü arayüzü — DONDURULDU (v0.1)
+
+Uygulama: `src/des_linsolve.f90` — `analyse` / `factorize` / `solve` /
+`inertia` / `free`.
+
+Bu sürümdeki tek uygulama profil (skyline) LDL^T'dir ve **pivotlama
+yapmaz**: simetrik pozitif tanımlı sistemlerde her zaman çalışır, genel
+indefinite sistemlerde sıfır pivotla karşılaşırsa `DES_LIN_ZERO_PIVOT`
+döndürür — sessizce yanlış cevap üretmez. Pivotlu bir uygulama
+(Bunch-Kaufman veya seyrek doğrudan çözücü) v0.3'te karışık u-p ile
+gelir; **arayüz o gün değişmeyecek.**
 
 Arayüz **simetrik indefinite** sistemleri desteklemek zorundadır.
 
@@ -177,6 +187,10 @@ tehlikelidir.
 | `des_sparse` | 5 | CSR depolama, montaj, RCM sıralaması |
 | `des_element` | 4 | Eleman sözleşmesi (soyut) |
 | `des_elem_axi_q4` | 4 | Eksenel simetrik Q4, full ve F-bar |
+| `des_bc` | 4 | Sınır koşulları, yük eğrileri, reaksiyon |
+| `des_assemble` | 4 | Eleman katkılarının global sisteme montajı |
+| `des_linsolve` | 5 | Doğrusal çözücü arayüzü + skyline LDL^T |
+| `des_newton` | 4 | Yük adımlamalı tam Newton, geri adım |
 
 `des_material` yalnızca `des_kinds` ve `des_tensor`a bağımlıdır. Hiçbir
 malzeme başka bir malzemeyi bilmez.

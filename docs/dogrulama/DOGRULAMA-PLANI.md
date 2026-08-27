@@ -59,9 +59,9 @@ bulunur; tolerans gerçekten yanlışsa, gerekçesi bu belgede güncellenir.
 
 | Durum | Sayı |
 |---|---|
-| **GEÇTİ** | 4 |
+| **GEÇTİ** | 5 |
 | Planlandı | 28 |
-| **Toplam** | 32 |
+| **Toplam** | 33 |
 
 ---
 
@@ -466,6 +466,52 @@ konfigürasyonda ters düğüm sırası `setup` tarafından reddedilir
 `src/des_elem_axi_q4.f90` · **Sözleşme:**
 [ADR 0009](../adr/0009-eleman-sozlesmesi.md)
 
+### VER-033 — Yama testi (patch test) · **GEÇTİ**
+
+Programın gerçekten bir sınır değer problemi çözdüğünün ilk kanıtı.
+Montaj, sınır koşulu, doğrusal çözücü ve Newton'un **tamamı** aynı anda
+sınanır: dördünden biri yanlışsa bu test geçmez.
+
+**Kurulum.** Dört elemanlı, bilinçli olarak ÇARPIK bir yama (kenar orta
+düğümleri de kaydırılmış). Yalnızca 5 numaralı düğüm içeridedir ve
+serbesttir; sekiz sınır düğümüne tam çözüm dayatılır.
+
+**Eksenel simetride "sabit gerilme" ne demek.** Düzlem problemlerde sabit
+gerilme durumu doğrusal bir yer değiştirme alanıdır. Eksenel simetride bu
+**doğru değildir**, çünkü $F_{tt} = 1 + u_r/R$ kinematiği yer
+değiştirmenin kendisini içerir. Doğru seçim **düzgün genişlemedir**:
+$u_r = (\lambda-1)R$, $u_z = (\lambda_z-1)Z$. Bu alanda
+$F_{rr} = F_{tt} = \lambda$ olur, $F$ sabittir ve
+$\sigma_{rr} = \sigma_{tt}$ olduğu için eksenel simetrik denge
+denklemindeki hoop terimi kendiliğinden sıfırlanır — yani düzgün
+genişleme gerçekten bir denge çözümüdür.
+
+**Referans:** VER-032 (a) ile aynı malzeme durumu. $C_{10} = 0.6$,
+$K = 10^5$, $\lambda = 1.1$ → her Gauss noktasında
+$\sigma_{rr} = \sigma_{zz} = \sigma_{tt} =$ 33100.000000000.
+
+**Tolerans:** 1e-12 bağıl.
+
+**Gerekçe:** *Yuvarlama tabanı.* Yama testinde **ayrıklaştırma hatası
+yoktur** — bilineer şekil fonksiyonları doğrusal alanı tam temsil eder.
+Sapma varsa montaj, sınır koşulu, çözücü veya eleman yanlıştır. Tolerans
+tartışmaya kapalıdır.
+
+> **Newton toleransı ayrı tutulur.** Yama toleransı 1e-12 sabittir; ona
+> ulaşabilmek için çözücünün durma ölçütü belirgin ölçüde sıkı olmalıdır
+> (`tol_rel = 1e-14`). Aksi hâlde ölçülen sapma elemanın değil,
+> çözücünün erken durmasının sonucu olur — ilk denemede tam bu oldu ve
+> 2.9e-12 çıktı.
+
+**Ölçülen:**
+
+| Formülasyon | İç düğüm bağıl hata | 16 Gauss noktası max\|ΔF\| | σ bağıl hata |
+|---|---|---|---|
+| `full` | **1.7679e-16** | **0.0 (tam)** | **1.0991e-15** |
+| `fbar` | **1.4523e-15** | 4.4409e-16 | **1.9784e-15** |
+
+**Uygulama:** `test/check_patch.f90`
+
 ---
 
 ## Sürümlere göre dağılım
@@ -474,6 +520,7 @@ konfigürasyonda ters düğüm sırası `setup` tarafından reddedilir
 |---|---|---|
 | v0.0.1 | VER-001, 002, 031 | 3 · **GEÇTİ** |
 | v0.0.2 | VER-032 | 1 · **GEÇTİ** |
+| v0.1 (kısmi) | VER-033 | 1 · **GEÇTİ** |
 | v0.1 | VER-010, 011, 014, 017, 018, 019, 024 | 7 |
 | v0.2 | VER-012, 027 | 2 |
 | v0.3 | VER-013, 015, 016, 020, 021, 025, 026, 028 | 8 |

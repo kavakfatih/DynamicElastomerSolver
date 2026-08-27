@@ -11,6 +11,59 @@ Sürümlerde **tarih yoktur**. Bir sürüm, kapısındaki koşullar sağlandığ
 
 ## [Yayımlanmadı]
 
+### Eklendi (v0.1 yolunda) — program ilk kez bir sistem çözüyor
+
+- `src/des_bc.f90` — Dirichlet, düğüm kuvveti, eksenel simetrik yüzey
+  basıncı, parçalı doğrusal yük eğrileri, reaksiyon okuma. Dirichlet
+  **ELEME** ile uygulanır (penaltı değil): penaltı köşegene büyük sayı
+  ekleyip koşul sayısını bozar, kauçukta K/mu ~ 1e5 olduğu için sistem
+  zaten kötü koşulludur. Eleme matrise uygulanır, ARTIĞA değil —
+  reaksiyon böylece doğrudan okunur.
+- `src/des_assemble.f90` — ağ + eleman listesi → global artık ve tanjant.
+  Sembolik desen bir kez kurulur. `K_gu` saklanmaz, `transpose(K_ug)`
+  kullanılır (ADR-0009).
+- `src/des_linsolve.f90` — **Dondurulmuş Sözleşme 3**. Soyut arayüz
+  (`analyse`/`factorize`/`solve`/`inertia`/`free`) simetrik indefinite
+  taşır. Tek uygulama profil (skyline) LDL^T; **pivotlama yapmaz**, sıfır
+  pivotta `DES_LIN_ZERO_PIVOT` döner. Pivotlu uygulama v0.3'te.
+- `src/des_newton.f90` — tam Newton, artık yakınsama ölçütü (bağıl ve
+  mutlak), sabit yük artımı + geri adım, `dt_factor` uyumu, J ≤ 0'da
+  anında geri adım. Yakınsama geçmişi saklanabilir; çekirdek metin
+  üretmez.
+- **VER-033 yama testi** (`test/check_patch.f90`) — çarpık dört elemanlı
+  yama, tek serbest iç düğüm. `full` ve `fbar` geçiyor: iç düğüm bağıl
+  hatası 1.77e-16 / 1.45e-15, on altı Gauss noktasında max|ΔF| tam sıfır.
+
+### Değişti (v0.1 yolunda)
+
+- **F-bar yeniden formüle edildi: merkez J₀ yerine ORTALAMA GENLEŞME**
+  (`J̄ = (1/V)∫J dV`). Merkez tabanlı varyasyonel F-bar **yama testini
+  yapısal olarak geçemiyor**: homojen durumda artık
+  `−(p/3)∫(g:δF_a)dV + (p/3)V(g0:δF0_a)` terimlerine iniyor ve bunlar
+  ancak `∫δF_a dV = V·δF_a(merkez)` ise sadeleşiyor — çarpık elemanda
+  bu eşitlik sağlanmıyor. Ölçülen: iç düğüm artığı (−185.8, +829.0).
+  Ortalama genleşmede `δJ̄` tanım gereği `δF`'in eleman ortalamasını
+  taşır ve terimler tam sadeleşir. Simetri korunuyor, `det F̄ = J̄`
+  olduğu için kilitlenme çaresi de. Bu, Nagtegaal-Parks-Rice ve
+  Simo-Taylor-Pister'in yöntemidir.
+- Sonuç olarak **VER-032'nin `fbar` tanjant hatası değişti**:
+  4.9578e-10 → **2.1123e-10**. Formülasyon değiştiği için bu kaçınılmaz
+  ve beklenen bir değişikliktir; `full` (1.7762e-10) ve VER-001/002/031
+  bit düzeyinde aynı kaldı.
+
+### Düzeltildi (v0.1 yolunda)
+
+- **Jacobian tersinde `j12` ile `j21` yer değiştirmişti.** Doğrusu
+  `dN/dR = (j22·dN/dξ − j12·dN/dη)/det`. Dikdörtgen elemanda
+  `j12 = j21 = 0` olduğu için hata GÖRÜNMÜYORDU: VER-032'nin bütün test
+  elemanları dikdörtgendi ve tanjant-vs-sonlu-fark kontrolü aynı yanlış
+  türevi iki tarafta da kullandığı için tutarlı çıkıyordu. Yalnızca
+  çarpık ağdaki yama testi yakaladı — testin varlık sebebi tam budur.
+- `kinematics` ve `centroid_state` varsayılan-şekilli argümana çevrildi;
+  çalışma zamanı dizi kopyası uyarıları giderildi.
+- VER-032'de "eksen" tanjant kontrolü `fbar` etiketi taşıyıp aslında
+  `full` çalıştırıyordu; artık gerçekten `fbar` kuruluyor.
+
 ### Eklendi (v0.0.2 yolunda)
 
 - **Eksenel simetrik Q4 elemanı** (`src/des_elem_axi_q4.f90`) — ADR-0009
