@@ -217,6 +217,14 @@ program check_elem_axi_q4
                    abs(sig(3, 3) - sig(1, 1))/33100.0_dp, TOL_HOMOG)
 
    !> Tanjant da eksen elemaninda saglam olmali (1/R orada sadelesmez).
+   !> F-BAR ile: ortalama genlesme terimleri eksen elemaninda da dogru
+   !> olmali. Once formulasyonu gercekten fbar'a cevir -- aksi halde
+   !> etiket fbar der ama eleman full kalirdi.
+   cfg%formulation = DES_FORM_FBAR
+   call el%setup(reshape([0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, &
+                          1.0_dp, 1.0_dp, 0.0_dp, 1.0_dp], [2, 4]), &
+                 cfg, mat, stat)
+   call t_check_int('eksen fbar: setup OK', stat, DES_ELEM_OK)
    call run_tangent_check_on(el, DES_FORM_FBAR, 'eksen')
 
    ! =========================================================================
