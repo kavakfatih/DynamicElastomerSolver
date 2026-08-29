@@ -192,6 +192,9 @@ tehlikelidir.
 | `des_linsolve` | 5 | Doğrusal çözücü arayüzü + skyline LDL^T |
 | `des_newton` | 4 | Yük adımlamalı tam Newton, geri adım |
 
+`des_elem_axi_q4` v0.1'de yalnızca `DES_ANA_AXISYM` destekler; burulma
+(`DES_ANA_AXISYM_TORSION`) v0.2'de aynı elemana eklenecektir.
+
 `des_material` yalnızca `des_kinds` ve `des_tensor`a bağımlıdır. Hiçbir
 malzeme başka bir malzemeyi bilmez.
 

@@ -11,6 +11,35 @@ Sürümlerde **tarih yoktur**. Bir sürüm, kapısındaki koşullar sağlandığ
 
 ## [Yayımlanmadı]
 
+### Eklendi — v0.1 kapısı
+
+- **VER-034 kalın cidarlı silindir** (`test/check_cylinder.f90`), 8
+  kontrol. A = 1, B = 2, düzlem şekil değiştirme, yer değiştirme
+  kontrolü; basınç iç düğümlerdeki reaksiyondan okunuyor.
+  - Üç referans vakasında basınç bağıl hatası **1.98e-04 … 3.15e-05**,
+    dış yarıçap yer değiştirmesi **8.71e-06 … 7.65e-06**.
+  - Toleranslar spesifikasyondaki 1e-3'ten **daraltıldı**: basınç 5e-4
+    (ayrıklaştırma baskın, ölçülen mertebe 2.006/2.035), u_r(B) 5e-5
+    (gerilme içermez, sapma tam olarak mu/K = 1.2e-5 tabanında).
+  - **D2 kilitlenme çalışması:** aynı ağda tam integrasyon basıncı
+    **7–15 kat** fazla veriyor (bağıl hata 6.38 … 13.55); F-bar
+    kilitlenmeyi tamamen gideriyor. ADR-0009 (c)'nin doğrulanması.
+  - **D3 ağ yakınsaması:** 4/8/16 elemanda hata 1.96e-03 → 4.89e-04 →
+    1.19e-04, **ölçülen mertebe 2.006 ve 2.035** — Q4 için beklenen
+    O(h²) ile birebir.
+- `scripts/durum.sh` — depo durum özeti (dal, sürüm, derleme, testler,
+  altı referans sayı). Salt okunur.
+
+### Değişti — v0.1 kapısı
+
+- **Geri adımda eleman durumu da geri alınıyor.** `newton_solve` artık
+  adım başında `element_t%serialise` ile elemanın kendi durumunu
+  (yoğunlaştırılmış iç serbestlikler) kaydediyor ve geri adımda
+  yüklüyor. Bugün `full`/`fbar` için sıfır uzunluk; v0.3'te karışık u-p
+  geldiğinde dolacak. Yol şimdi kuruldu ki o gün Newton'a dokunulmasın.
+- README durum başlığı güncellendi: program artık bir sınır değer
+  problemi çözüyor.
+
 ### Eklendi (v0.1 yolunda) — program ilk kez bir sistem çözüyor
 
 - `src/des_bc.f90` — Dirichlet, düğüm kuvveti, eksenel simetrik yüzey
