@@ -104,6 +104,64 @@ module des_newton
 
 contains
 
+   !> Elemanların kendi durumunu düz bir tampona yazar.
+   subroutine save_element_state(elems, buf, ntot, stat)
+      type(element_ref_t), intent(in) :: elems(:)
+      real(dp), intent(inout) :: buf(:)
+      integer(ip), intent(in) :: ntot
+      integer(ip), intent(out) :: stat
+
+      integer(ip) :: ie, m, pos, got
+
+      stat = DES_NWT_BAD_ARG
+      if (ntot == 0_ip) then
+         stat = DES_NWT_OK
+         return
+      end if
+      if (int(size(buf), ip) < ntot) return
+
+      pos = 1_ip
+      do ie = 1_ip, int(size(elems), ip)
+         if (.not. allocated(elems(ie)%e)) return
+         m = elems(ie)%e%n_internal_dof()
+         if (m == 0_ip) cycle
+         got = elems(ie)%e%serialise(buf(pos:pos + m - 1_ip))
+         if (got /= m) return
+         pos = pos + m
+      end do
+
+      stat = DES_NWT_OK
+   end subroutine save_element_state
+
+   !> Eleman durumunu tampondan geri yükler.
+   subroutine load_element_state(elems, buf, ntot, stat)
+      type(element_ref_t), intent(inout) :: elems(:)
+      real(dp), intent(in) :: buf(:)
+      integer(ip), intent(in) :: ntot
+      integer(ip), intent(out) :: stat
+
+      integer(ip) :: ie, m, pos, got
+
+      stat = DES_NWT_BAD_ARG
+      if (ntot == 0_ip) then
+         stat = DES_NWT_OK
+         return
+      end if
+      if (int(size(buf), ip) < ntot) return
+
+      pos = 1_ip
+      do ie = 1_ip, int(size(elems), ip)
+         if (.not. allocated(elems(ie)%e)) return
+         m = elems(ie)%e%n_internal_dof()
+         if (m == 0_ip) cycle
+         got = elems(ie)%e%restore(buf(pos:pos + m - 1_ip))
+         if (got /= m) return
+         pos = pos + m
+      end do
+
+      stat = DES_NWT_OK
+   end subroutine load_element_state
+
    !> Yakınsama kararı.
    !>
    !> TEK YER: v0.3'te yer değiştirme ve enerji kriterleri buraya eklenir.
@@ -138,7 +196,12 @@ contains
       type(newton_result_t), intent(out) :: res
 
       real(dp), allocatable :: f_int(:), f_ext(:), rhs(:), du(:), u_save(:)
-      integer(ip) :: n, it, st, ncut, ng, nel, ig, ie
+      !> Elemanın KENDİ sahip olduğu durum (yoğunlaştırılmış iç
+      !> serbestlikler, ADR-0009 e). Geri adımda bu da geri alınmalıdır:
+      !> yalnızca u ve Gauss durumları geri alınırsa, tekrarlanan artım
+      !> farklı bir basınç alanından başlar ve sessizce yanlış çalışır.
+      real(dp), allocatable :: e_save(:)
+      integer(ip) :: n, it, st, ncut, ng, nel, ig, ie, n_esave
       real(dp) :: t, dt, t_try, rnorm, rref, dtf, fext_norm
 
       res%stat = DES_NWT_BAD_ARG
@@ -153,6 +216,16 @@ contains
       nel = int(size(elems), ip)
 
       allocate (f_int(n), f_ext(n), rhs(n), du(n), u_save(n))
+
+      !> Eleman durumu tamponu: bugün full ve fbar için sıfır uzunluktur,
+      !> v0.3'te karışık u-p geldiğinde dolar. Yol şimdi kuruluyor ki o
+      !> gün Newton'a dokunulmasın.
+      n_esave = 0_ip
+      do ie = 1_ip, nel
+         if (allocated(elems(ie)%e)) n_esave = n_esave + elems(ie)%e%n_internal_dof()
+      end do
+      allocate (e_save(max(1_ip, n_esave)))
+      e_save = 0.0_dp
       if (opts%keep_history) then
          allocate (res%hist_resid(opts%max_iter*(opts%n_step + opts%max_cutback + 1_ip)))
          allocate (res%hist_step(size(res%hist_resid)))
@@ -178,6 +251,8 @@ contains
 
          !> Adım başlangıcını kaydet: geri adımda buraya dönülür.
          u_save = u
+         call save_element_state(elems, e_save, n_esave, st)
+         if (st /= DES_NWT_OK) return
          res%n_step = res%n_step + 1_ip
 
          call bc%apply_prescribed(t_try, u, st)
@@ -260,8 +335,12 @@ contains
             t = t_try
             res%resid_final = rnorm
          else
-            !> Geri adım: durumu ve yer değiştirmeyi geri al, artımı küçült.
+            !> Geri adım: yer değiştirmeyi VE eleman durumunu geri al,
+            !> artımı küçült. Gauss durumları zaten yalnızca kabul
+            !> edildiğinde işleniyor.
             u = u_save
+            call load_element_state(elems, e_save, n_esave, st)
+            if (st /= DES_NWT_OK) return
             res%n_step = res%n_step - 1_ip
             ncut = ncut + 1_ip
             res%n_cutback = ncut

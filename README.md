@@ -8,11 +8,16 @@ element) çözücüsü.
 Hedef ürünler: burulmalı titreşim damperi (torsional vibration damper)
 kauçuğu, decoupler, burç (bushing), motor takozu, şanzıman takozu, kaplin.
 
-> **Durum: v0.0.1 — malzeme çekirdeği.**
-> Bu sürümde ağ (mesh), eleman ve çözücü **yoktur**. Yalnızca malzeme
-> arayüzü, sıkıştırılabilir Neo-Hookean malzeme ve doğrulama altyapısı
-> kuruludur. Programla bir parça çözülemez; bir sonraki adım için
-> [docs/YOL-HARITASI.md](docs/YOL-HARITASI.md) dosyasına bakınız.
+> **Durum: v0.1 — ilk gerçek çözüm.**
+> Program artık bir sınır değer problemi çözüyor: eksenel simetrik Q4
+> elemanı (tam integrasyon ve F-bar), montaj, sınır koşulları, profil
+> LDL^T doğrusal çözücüsü ve yük adımlamalı Newton. Yama testi ve kalın
+> cidarlı silindir analitik çözüme karşı doğrulanmış durumda.
+>
+> **Henüz yok:** burulma (v0.2), karışık u-p (v0.3), viskoelastisite
+> (v0.4), yeniden ağ örme (v0.5), temas (v1.x). Ağ üretimi de yok —
+> testler ağı elle kuruyor. Yol haritası:
+> [docs/YOL-HARITASI.md](docs/YOL-HARITASI.md).
 
 ---
 
@@ -124,7 +129,9 @@ Bu sürümde geçen doğrulamalar:
 | VER-001 | Tek eksenli gerilme, Neo-Hookean | Analitik tam çözüm | bağıl hata 4.8e-06 … 5.9e-05 |
 | VER-002 | Tutarlı tanjant (consistent tangent) | Sonlu fark | bağıl hata ≤ 1.1e-10 |
 | VER-031 | Mod bazlı kararlılık, dP/dλ | Bağımsız referans tablosu | mutlak fark ≤ 4.3e-06 |
-| VER-032 | Eksenel simetrik Q4 elemanı | Analitik + sonlu fark | tanjant ≤ 5.0e-10, gerilme ≤ 9.3e-15 |
+| VER-032 | Eksenel simetrik Q4 elemanı | Analitik + sonlu fark | tanjant ≤ 2.4e-10, gerilme ≤ 9.3e-15 |
+| VER-033 | Yama testi (patch test) | Analitik, çarpık ağ | ≤ 2.0e-15 |
+| VER-034 | Kalın cidarlı silindir | Analitik (sıkıştırılamaz) | basınç ≤ 2.0e-04, u_r(B) ≤ 8.7e-06 |
 
 VER-001'de küçük şekil değiştirme elastisite modülü **3.599986** ölçülür;
 sıkıştırılamaz sınırdaki kesin değer 6·C10 = 3.600000, sonlu K = 1e5 için

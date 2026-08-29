@@ -59,9 +59,9 @@ bulunur; tolerans gerçekten yanlışsa, gerekçesi bu belgede güncellenir.
 
 | Durum | Sayı |
 |---|---|
-| **GEÇTİ** | 5 |
+| **GEÇTİ** | 6 |
 | Planlandı | 28 |
-| **Toplam** | 33 |
+| **Toplam** | 34 |
 
 ---
 
@@ -512,6 +512,81 @@ tartışmaya kapalıdır.
 
 **Uygulama:** `test/check_patch.f90`
 
+### VER-034 — Kalın cidarlı silindir, iç basınç · **GEÇTİ** · v0.1 KAPISI
+
+Programın gerçek bir mühendislik problemini analitik çözümle uyumlu
+çözdüğünün ilk kanıtı.
+
+**Kurulum.** $A = 1$, $B = 2$, $C_{10} = 0.6$, $K = 10^5$
+($K/C_{10} = 1.67\times10^5$). İki uçta $u_z = 0$ → düzlem şekil
+değiştirme, $\lambda_z = 1$. Radyal yönde 16 eleman.
+
+**Yer değiştirme kontrolü, yük kontrolü değil.** Bu problemde iç basınç
+şişmeyle birlikte bir üst değere doyar; yük kontrollü çözüm doyma
+bölgesinde kötü koşullanır ve v0.1'de yay uzunluğu (arc-length) yoktur.
+$u_r(A)$ dayatılıp basınç reaksiyondan okunur.
+
+**Basıncın reaksiyondan okunması.** `des_bc` elemeyi matrise uygular,
+artığa değil; yakınsamış durumda dayatılmış serbestlikteki artık
+doğrudan mesnet tepkisidir:
+
+$$P = \frac{\text{iç düğümlerdeki toplam radyal artık}}{a \cdot L},
+\qquad a = A + u_r(A)$$
+
+Ölçek radyan başınadır; tam çevre konvansiyonundaki $2\pi$ hem
+reaksiyonda hem alanda bulunduğu için $P$ aynı çıkar.
+
+**Ölçülen** (F-bar, radyal 16 eleman):
+
+| $u_r(A)$ | P (hesap) | P (ref) | bağıl | $u_r(B)$ (hesap) | $u_r(B)$ (ref) | bağıl |
+|---|---|---|---|---|---|---|
+| 0.100 | 0.157906056 | 0.157874734 | **1.98e-04** | 0.051828904 | 0.051828453 | **8.71e-06** |
+| 0.250 | 0.330893283 | 0.330853844 | **1.19e-04** | 0.136002064 | 0.136000936 | **8.29e-06** |
+| 0.500 | 0.513890260 | 0.513874091 | **3.15e-05** | 0.291290077 | 0.291287847 | **7.65e-06** |
+
+**Toleranslar — iki ayrı büyüklük, iki ayrı gerekçe.** Spesifikasyon
+1e-3 ile başlamayı ve ölçülen çok daha iyiyse daraltmayı istiyordu;
+ölçüldü ve daraltıldı.
+
+| Büyüklük | Tolerans | Gerekçe |
+|---|---|---|
+| Basınç | **5e-4** | *Ayrıklaştırma.* Q4 ikinci mertebe; ölçülen mertebe 2.006/2.035, 16 elemanda hata 1.19e-04…1.98e-04. Tolerans ~2.5 kat pay. |
+| $u_r(B)$ | **5e-5** | *Fiziksel sapma.* $u_r(B)$ sıkıştırılamazlığın doğrudan sonucudur ($b^2-a^2 = B^2-A^2$) ve gerilme içermez; ayrıklaştırma neredeyse hiç girmez. Ölçülen 7.65e-06…8.71e-06, yani tam olarak $\mu/K = 1.2\times10^{-5}$ tabanında. ~6 kat pay. |
+
+### VER-034 D2 — Kilitlenme çalışması
+
+**ADR-0009 (c)'nin doğrulanması: formülasyon çalışma zamanı seçimidir.**
+Aynı ağ, aynı malzeme, tek fark formülasyon.
+
+| $u_r(A)$ | P (`full`) | bağıl hata | P (`fbar`) | bağıl hata | full/fbar |
+|---|---|---|---|---|---|
+| 0.100 | 2.296980751 | **13.55** | 0.157906056 | 1.98e-04 | **14.55×** |
+| 0.250 | 3.638946383 | **10.00** | 0.330893283 | 1.19e-04 | **11.00×** |
+| 0.500 | 3.793776147 | **6.38** | 0.513890260 | 3.15e-05 | **7.38×** |
+
+Tam integrasyon $K/C_{10} = 1.67\times10^5$'te ders kitabı ölçüsünde
+kilitleniyor: basıncı 7–15 kat fazla veriyor. F-bar kilitlenmeyi
+tamamen gideriyor.
+
+`full` için **tolerans konmamıştır** — kilitlenmesi beklenen
+davranıştır. Testin geçme koşulu `fbar` üzerindendir; tek iddia
+`fbar`ın `full`den daha doğru olmasıdır.
+
+### VER-034 D3 — Ağ yakınsaması
+
+F-bar, $u_r(A) = 0.25$:
+
+| Radyal eleman | P (hesap) | bağıl hata |
+|---|---|---|
+| 4 | 0.331502890 | 1.9617e-03 |
+| 8 | 0.331015481 | 4.8854e-04 |
+| 16 | 0.330893283 | 1.1920e-04 |
+
+**Ölçülen mertebe: 2.006 (4→8) ve 2.035 (8→16).** Q4 için beklenen
+$O(h^2)$ ile birebir.
+
+**Uygulama:** `test/check_cylinder.f90`
+
 ---
 
 ## Sürümlere göre dağılım
@@ -520,7 +595,7 @@ tartışmaya kapalıdır.
 |---|---|---|
 | v0.0.1 | VER-001, 002, 031 | 3 · **GEÇTİ** |
 | v0.0.2 | VER-032 | 1 · **GEÇTİ** |
-| v0.1 (kısmi) | VER-033 | 1 · **GEÇTİ** |
+| v0.1 | VER-033, 034 | 2 · **GEÇTİ** |
 | v0.1 | VER-010, 011, 014, 017, 018, 019, 024 | 7 |
 | v0.2 | VER-012, 027 | 2 |
 | v0.3 | VER-013, 015, 016, 020, 021, 025, 026, 028 | 8 |
