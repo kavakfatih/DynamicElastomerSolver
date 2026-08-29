@@ -78,6 +78,12 @@ program check_cylinder
    !> daraltmayı istiyordu. Ölçüldü ve daraltıldı; gerekçeler:
    !>
    !> BASINÇ -- 5e-4 bağıl.
+   !>
+   !>   UYARI: bu tolerans 16 ELEMANLI ağa göre seçildi (ölçülen
+   !>   1.98e-04). 8 elemanda hata 4.89e-04'e çıkar ve kıl payı geçer.
+   !>   Ağ, testin TANIMININ parçasıdır; ayarlanabilir bir parametre
+   !>   değildir. Ağı seyreltip toleransı gevşetmek, testi anlamsızlaştırır.
+   !>
    !>   Baskın pay AYRIKLAŞTIRMAdır. Q4 ikinci mertebe yakınsar ve bu
    !>   testte ölçülen mertebe 2.006 / 2.035'tir; radyal 16 elemanda hata
    !>   1.19e-04 ... 1.98e-04 çıkıyor. Tolerans bunun ~2.5 katı: platform
@@ -327,6 +333,41 @@ contains
 
    !> D3 -- AĞ YAKINSAMASI. Radyal 4, 8, 16 eleman; mertebe O(h^2)'ye
    !> yakın olmalı.
+   !>
+   !> AĞ NEDEN 16'DA KESİLİYOR -- ÖLÇÜLDÜ
+   !>
+   !> Referans TAM sıkıştırılamaz çözümdür; ayrık çözüm ise sonlu K'lı
+   !> SIKIŞTIRILABİLİR çözüme yakınsar. İkisi arasındaki fark sabit bir
+   !> kaymadır ve burada NEGATİFtir (~ -4e-06). Ayrıklaştırma hatası ise
+   !> POZİTİF ve O(h^2)'dir. Bu ikisi ters işaretli olduğu için ağ
+   !> inceltildikçe birbirlerini götürürler:
+   !>
+   !>    eleman     P            isaretli hata     mertebe
+   !>       4    0.331502890     +1.9617e-03
+   !>       8    0.331015481     +4.8854e-04        2.006
+   !>      16    0.330893283     +1.1920e-04        2.035
+   !>      32    0.330862675     +2.6690e-05        2.159
+   !>      64    0.330855073     +3.7144e-06        2.845   <- sahte
+   !>     128    0.330853162     -2.0605e-06        0.850   <- isaret dondu
+   !>     256    0.330852685     -3.5034e-06       -0.766   <- hata BUYUYOR
+   !>
+   !> İKİ TUZAK, ikincisi daha sinsi:
+   !>
+   !>  1. 128'den sonra hata TEKRAR BÜYÜR ve ölçülen mertebe NEGATİF
+   !>     çıkar. Bu bir regresyon değildir; ayrık çözüm doğru yere
+   !>     yakınsamaktadır, referans başka bir yerdedir.
+   !>
+   !>  2. Tam sıfır geçişinden hemen önce (32->64) mertebe 2.845 ölçülür.
+   !>     Bu SAHTE bir üstün yakınsamadır ve Q4'ün ikinci mertebeden iyi
+   !>     olduğu izlenimini verir. Yakınsama mertebesi ölçen biri tam
+   !>     buraya denk gelirse yanlış sonuç raporlar.
+   !>
+   !> Bu yüzden mertebe ölçümü 4-8-16 aralığında yapılır: orada
+   !> ayrıklaştırma hatası sıkıştırılabilirlik kaymasının iki mertebe
+   !> üstündedir ve ölçülen mertebe temizdir (2.006 ve 2.035).
+   !>
+   !> Daha ince ağda mertebe ölçmek gerekirse K büyütülmeli veya referans
+   !> sonlu K için çözülmelidir.
    subroutine mesh_convergence()
       integer(ip), parameter :: NR(3) = [4_ip, 8_ip, 16_ip]
       real(dp) :: p_out, ub_out, err(3), rate1, rate2
