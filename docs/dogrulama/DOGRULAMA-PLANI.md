@@ -585,6 +585,45 @@ F-bar, $u_r(A) = 0.25$:
 **Ölçülen mertebe: 2.006 (4→8) ve 2.035 (8→16).** Q4 için beklenen
 $O(h^2)$ ile birebir.
 
+#### Ağ neden 16'da kesiliyor — ölçüldü
+
+Referans **tam sıkıştırılamaz** çözümdür; ayrık çözüm ise sonlu $K$'lı
+**sıkıştırılabilir** çözüme yakınsar. Aradaki fark sabit bir kaymadır ve
+burada **negatiftir** (~ −4e-06). Ayrıklaştırma hatası ise **pozitif** ve
+$O(h^2)$'dir. Ters işaretli oldukları için ağ inceltildikçe birbirlerini
+götürürler:
+
+| Eleman | P | işaretli hata | mertebe |
+|---|---|---|---|
+| 4 | 0.331502890 | +1.9617e-03 | — |
+| 8 | 0.331015481 | +4.8854e-04 | 2.006 |
+| 16 | 0.330893283 | +1.1920e-04 | 2.035 |
+| 32 | 0.330862675 | +2.6690e-05 | 2.159 |
+| 64 | 0.330855073 | +3.7144e-06 | **2.845** ← sahte |
+| 128 | 0.330853162 | **−2.0605e-06** | 0.850 ← işaret döndü |
+| 256 | 0.330852685 | −3.5034e-06 | **−0.766** ← hata büyüyor |
+
+**İki tuzak, ikincisi daha sinsi:**
+
+1. 128'den sonra hata **tekrar büyür** ve ölçülen mertebe negatif çıkar.
+   Bu bir regresyon değildir — ayrık çözüm doğru yere yakınsamaktadır,
+   referans başka bir yerdedir.
+
+2. Sıfır geçişinden hemen önce (32→64) mertebe **2.845** ölçülür. Bu
+   **sahte bir üstün yakınsamadır** ve Q4'ün ikinci mertebeden iyi olduğu
+   izlenimini verir. Yakınsama mertebesi ölçen biri tam buraya denk
+   gelirse yanlış sonuç raporlar.
+
+Bu yüzden mertebe ölçümü 4–8–16 aralığında yapılır: orada ayrıklaştırma
+hatası, sıkıştırılabilirlik kaymasının iki mertebe üstündedir ve ölçülen
+mertebe temizdir. Daha ince ağda mertebe ölçmek gerekirse $K$ büyütülmeli
+veya referans sonlu $K$ için çözülmelidir.
+
+> **Tolerans, ağın bir fonksiyonudur.** Basınç toleransı (5e-4) 16
+> elemanlı ağa göre seçilmiştir; 8 elemanda hata 4.89e-04'e çıkar ve kıl
+> payı geçer. **Ağ, testin tanımının parçasıdır** — ayarlanabilir bir
+> parametre değildir.
+
 **Uygulama:** `test/check_cylinder.f90`
 
 ---
